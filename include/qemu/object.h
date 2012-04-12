@@ -555,6 +555,12 @@ ObjectClass *object_class_dynamic_cast(ObjectClass *klass,
  */
 const char *object_class_get_name(ObjectClass *klass);
 
+/**
+ * object_class_by_name:
+ * @typename: The QOM typename to obtain the class for.
+ *
+ * Returns: The class for @typename.
+ */
 ObjectClass *object_class_by_name(const char *typename);
 
 void object_class_foreach(void (*fn)(ObjectClass *klass, void *opaque),
