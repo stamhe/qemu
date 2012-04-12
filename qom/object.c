@@ -802,7 +802,8 @@ void object_property_get(Object *obj, Visitor *v, const char *name,
     }
 
     if (!prop->get) {
-        error_set(errp, QERR_PERMISSION_DENIED);
+        error_set(errp, QERR_PROPERTY_SET_AFTER_REALIZE,
+                  object_get_id(obj), name);
     } else {
         prop->get(obj, v, prop->opaque, name, errp);
     }
@@ -817,7 +818,8 @@ void object_property_set(Object *obj, Visitor *v, const char *name,
     }
 
     if (!prop->set) {
-        error_set(errp, QERR_PERMISSION_DENIED);
+        error_set(errp, QERR_PROPERTY_SET_AFTER_REALIZE,
+                  object_get_id(obj), name);
     } else {
         prop->set(obj, v, prop->opaque, name, errp);
     }
@@ -1438,7 +1440,8 @@ static void set_bit(Object *obj, Visitor *v, void *opaque,
     bool value;
 
     if (object_is_realized(obj)) {
-        error_set(errp, QERR_PERMISSION_DENIED);
+        error_set(errp, QERR_PROPERTY_SET_AFTER_REALIZE,
+                  object_get_id(obj), name);
         return;
     }
 
@@ -1476,7 +1479,8 @@ static void set_uint8(Object *obj, Visitor *v, void *opaque,
     uint8_t *ptr = object_get_prop_ptr(obj, prop);
 
     if (object_is_realized(obj)) {
-        error_set(errp, QERR_PERMISSION_DENIED);
+        error_set(errp, QERR_PROPERTY_SET_AFTER_REALIZE,
+                  object_get_id(obj), name);
         return;
     }
 
@@ -1541,7 +1545,8 @@ static void set_uint16(Object *obj, Visitor *v, void *opaque,
     uint16_t *ptr = object_get_prop_ptr(obj, prop);
 
     if (object_is_realized(obj)) {
-        error_set(errp, QERR_PERMISSION_DENIED);
+        error_set(errp, QERR_PROPERTY_SET_AFTER_REALIZE,
+                  object_get_id(obj), name);
         return;
     }
 
@@ -1572,7 +1577,8 @@ static void set_uint32(Object *obj, Visitor *v, void *opaque,
     uint32_t *ptr = object_get_prop_ptr(obj, prop);
 
     if (object_is_realized(obj)) {
-        error_set(errp, QERR_PERMISSION_DENIED);
+        error_set(errp, QERR_PROPERTY_SET_AFTER_REALIZE,
+                  object_get_id(obj), name);
         return;
     }
 
@@ -1595,7 +1601,8 @@ static void set_int32(Object *obj, Visitor *v, void *opaque,
     int32_t *ptr = object_get_prop_ptr(obj, prop);
 
     if (object_is_realized(obj)) {
-        error_set(errp, QERR_PERMISSION_DENIED);
+        error_set(errp, QERR_PROPERTY_SET_AFTER_REALIZE,
+                  object_get_id(obj), name);
         return;
     }
 
@@ -1666,7 +1673,8 @@ static void set_uint64(Object *obj, Visitor *v, void *opaque,
     uint64_t *ptr = object_get_prop_ptr(obj, prop);
 
     if (object_is_realized(obj)) {
-        error_set(errp, QERR_PERMISSION_DENIED);
+        error_set(errp, QERR_PROPERTY_SET_AFTER_REALIZE,
+                  object_get_id(obj), name);
         return;
     }
 
@@ -1752,7 +1760,8 @@ static void set_string(Object *obj, Visitor *v, void *opaque,
     char *str;
 
     if (object_is_realized(obj)) {
-        error_set(errp, QERR_PERMISSION_DENIED);
+        error_set(errp, QERR_PROPERTY_SET_AFTER_REALIZE,
+                  object_get_id(obj), name);
         return;
     }
 
@@ -1795,7 +1804,8 @@ void property_set_enum(Object *obj, Visitor *v, void *opaque,
     int *ptr = object_get_prop_ptr(obj, prop);
 
     if (object_is_realized(obj)) {
-        error_set(errp, QERR_PERMISSION_DENIED);
+        error_set(errp, QERR_PROPERTY_SET_AFTER_REALIZE,
+                  object_get_id(obj), name);
         return;
     }
 
