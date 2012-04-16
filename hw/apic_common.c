@@ -21,6 +21,7 @@
 #include "apic_internal.h"
 #include "trace.h"
 #include "kvm.h"
+#include "msi.h"
 
 static int apic_irq_delivered;
 bool apic_report_tpr_access;
@@ -284,6 +285,7 @@ static int apic_init_common(SysBusDevice *dev)
     APICCommonClass *info;
     static DeviceState *vapic;
     static int apic_no;
+    static int apic_mapped;
 
     if (apic_no >= MAX_APICS) {
         return -1;
@@ -294,6 +296,20 @@ static int apic_init_common(SysBusDevice *dev)
     info->init(s);
 
     sysbus_init_mmio(dev, &s->io_memory);
+
+    /* XXX: mapping more APICs at the same memory location */
+    if (apic_mapped == 0) {
+        /* NOTE: the APIC is directly connected to the CPU - it is not
+           on the global memory bus. */
+        /* XXX: what if the base changes? */
+        sysbus_mmio_map(sysbus_from_qdev(&s->busdev.qdev), 0, MSI_ADDR_BASE);
+        apic_mapped = 1;
+    }
+
+    /* KVM does not support MSI yet. */
+    if (!kvm_irqchip_in_kernel()) {
+        msi_supported = true;
+    }
 
     if (!vapic && s->vapic_control & VAPIC_ENABLE_MASK) {
         vapic = sysbus_create_simple("kvmvapic", -1, NULL);
