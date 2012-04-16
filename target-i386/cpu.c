@@ -1448,6 +1448,8 @@ static void x86_cpu_reset(CPUState *s)
     env->dr[7] = DR7_FIXED_1;
     cpu_breakpoint_remove_all(env, BP_CPU);
     cpu_watchpoint_remove_all(env, BP_CPU);
+
+    env->halted = !(cpu_get_apic_base(env->apic_state) & MSR_IA32_APICBASE_BSP);
 }
 
 static void mce_init(X86CPU *cpu)

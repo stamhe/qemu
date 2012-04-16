@@ -1196,7 +1196,6 @@ void do_cpu_init(CPUX86State *env)
     env->interrupt_request = sipi;
     env->pat = pat;
     apic_init_reset(env->apic_state);
-    env->halted = !cpu_is_bsp(env);
 }
 
 void do_cpu_sipi(CPUX86State *env)

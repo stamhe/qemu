@@ -869,12 +869,6 @@ void pc_init_ne2k_isa(ISABus *bus, NICInfo *nd)
     nb_ne2k++;
 }
 
-int cpu_is_bsp(CPUX86State *env)
-{
-    /* We hard-wire the BSP to the first CPU. */
-    return env->cpu_index == 0;
-}
-
 DeviceState *cpu_get_current_apic(void)
 {
     if (cpu_single_env) {
@@ -929,7 +923,6 @@ static void pc_cpu_reset(void *opaque)
     CPUX86State *env = opaque;
 
     cpu_state_reset(env);
-    env->halted = !cpu_is_bsp(env);
 }
 
 static CPUX86State *pc_new_cpu(const char *cpu_model)
@@ -943,6 +936,10 @@ static CPUX86State *pc_new_cpu(const char *cpu_model)
     }
     if ((env->cpuid_features & CPUID_APIC) || smp_cpus > 1) {
         env->apic_state = apic_init(env, env->cpuid_apic_id);
+        /* We hard-wire the BSP to the first CPU. */
+        if (env->cpu_index == 0) {
+            apic_designate_bsp(env->apic_state);
+        }
     }
     qemu_register_reset(pc_cpu_reset, env);
     pc_cpu_reset(env);
