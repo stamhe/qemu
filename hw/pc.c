@@ -887,13 +887,6 @@ void pc_acpi_smi_interrupt(void *opaque, int irq, int level)
     }
 }
 
-static void pc_cpu_reset(void *opaque)
-{
-    CPUX86State *env = opaque;
-
-    cpu_state_reset(env);
-}
-
 void pc_cpus_init(const char *cpu_model)
 {
     CPUX86State *env;
@@ -904,7 +897,6 @@ void pc_cpus_init(const char *cpu_model)
         if (!env) {
             exit(1);
         }
-        qemu_register_reset(pc_cpu_reset, env);
     }
 }
 
