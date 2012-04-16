@@ -947,34 +947,6 @@ int check_hw_breakpoints(CPUX86State *env, int force_dr6_update)
     return hit_enabled;
 }
 
-static CPUDebugExcpHandler *prev_debug_excp_handler;
-
-static void breakpoint_handler(CPUX86State *env)
-{
-    CPUBreakpoint *bp;
-
-    if (env->watchpoint_hit) {
-        if (env->watchpoint_hit->flags & BP_CPU) {
-            env->watchpoint_hit = NULL;
-            if (check_hw_breakpoints(env, 0))
-                raise_exception_env(EXCP01_DB, env);
-            else
-                cpu_resume_from_signal(env, NULL);
-        }
-    } else {
-        QTAILQ_FOREACH(bp, &env->breakpoints, entry)
-            if (bp->pc == env->eip) {
-                if (bp->flags & BP_CPU) {
-                    check_hw_breakpoints(env, 1);
-                    raise_exception_env(EXCP01_DB, env);
-                }
-                break;
-            }
-    }
-    if (prev_debug_excp_handler)
-        prev_debug_excp_handler(env);
-}
-
 typedef struct MCEInjectionParams {
     Monitor *mon;
     CPUX86State *env;
@@ -1162,20 +1134,9 @@ CPUX86State *cpu_x86_init(const char *cpu_model)
     X86CPU *cpu;
     CPUX86State *env;
     Error *errp = NULL;
-    static int inited;
 
     cpu = X86_CPU(object_new(TYPE_X86_CPU));
     env = &cpu->env;
-
-    /* init various static tables used in TCG mode */
-    if (tcg_enabled() && !inited) {
-        inited = 1;
-        optimize_flags_init();
-#ifndef CONFIG_USER_ONLY
-        prev_debug_excp_handler =
-            cpu_set_debug_excp_handler(breakpoint_handler);
-#endif
-    }
 
     if (cpu_model) {
         object_property_set_str(OBJECT(cpu), cpu_model, "cpu-model", &errp);
@@ -1185,8 +1146,11 @@ CPUX86State *cpu_x86_init(const char *cpu_model)
         }
     }
 
-    qemu_init_vcpu(env);
-
+    object_property_set_bool(OBJECT(cpu), true, "realized", &errp);
+    if (errp) {
+        object_delete(OBJECT(cpu));
+        return NULL;
+    }
     return env;
 }
 
