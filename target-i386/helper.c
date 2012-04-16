@@ -1134,6 +1134,7 @@ CPUX86State *cpu_x86_init(const char *cpu_model)
     X86CPU *cpu;
     CPUX86State *env;
     Error *errp = NULL;
+    char cpuname[8];
 
     cpu = X86_CPU(object_new(TYPE_X86_CPU));
     env = &cpu->env;
@@ -1145,6 +1146,9 @@ CPUX86State *cpu_x86_init(const char *cpu_model)
             return NULL;
         }
     }
+
+    snprintf(cpuname, sizeof(cpuname), "cpu%d", env->cpuid_apic_id);
+    object_property_add_child(container_get("/machine"), cpuname, OBJECT(cpu), NULL);
 
     object_property_set_bool(OBJECT(cpu), true, "realized", &errp);
     if (errp) {
