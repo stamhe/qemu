@@ -221,7 +221,7 @@ typedef struct CPUWatchpoint {
     struct QemuCond *halt_cond;                                         \
     int thread_kicked;                                                  \
     struct qemu_work_item *queued_work_first, *queued_work_last;        \
-    const char *cpu_model_str;                                          \
+    char *cpu_model_str;                                                \
     struct KVMState *kvm_state;                                         \
     struct kvm_run *kvm_run;                                            \
     int kvm_fd;                                                         \

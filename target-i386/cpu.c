@@ -29,6 +29,8 @@
 
 #include "hyperv.h"
 
+#include "qerror.h"
+
 /* feature flags taken from "Intel Processor Identification and the CPUID
  * Instruction" and AMD's "CPUID Specification".  In cases of disagreement
  * between feature naming conventions, aliases may be added.
@@ -1468,6 +1470,27 @@ static void mce_init(X86CPU *cpu)
     }
 }
 
+static char *x86_get_cpu_model(Object *obj, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+    return g_strdup(env->cpu_model_str);
+}
+
+static void x86_set_cpu_model(Object *obj, const char *value, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+
+    g_free((gpointer)env->cpu_model_str);
+    env->cpu_model_str = g_strdup(value);
+
+    if (cpu_x86_register(env, env->cpu_model_str) < 0) {
+        fprintf(stderr, "Unable to find x86 CPU definition\n");
+        error_set(errp, QERR_INVALID_PARAMETER_COMBINATION);
+    }
+}
+
 static void x86_cpu_initfn(Object *obj)
 {
     X86CPU *cpu = X86_CPU(obj);
@@ -1475,6 +1498,16 @@ static void x86_cpu_initfn(Object *obj)
 
     cpu_exec_init(env);
     env->cpuid_apic_id = env->cpu_index;
+
+    object_property_add_str(obj, "cpu-model",
+        x86_get_cpu_model, x86_set_cpu_model, NULL);
+
+#ifdef TARGET_X86_64
+    object_property_set_str(OBJECT(cpu), "qemu64", "cpu-model", NULL);
+#else
+    object_property_set_str(OBJECT(cpu), "qemu32", "cpu-model", NULL);
+#endif
+
     mce_init(cpu);
 }
 
