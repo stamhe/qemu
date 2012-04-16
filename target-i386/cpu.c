@@ -1456,6 +1456,14 @@ static void x86_cpu_reset(CPUState *s)
     env->halted = !(cpu_get_apic_base(env->apic_state) & MSR_IA32_APICBASE_BSP);
 }
 
+/* TODO: remove it when reset of QOM tree is implemented */
+static void x86_cpu_machine_reset(void *opaque)
+{
+    X86CPU *cpu = opaque;
+
+    cpu_reset(CPU(cpu));
+}
+
 static void mce_init(X86CPU *cpu)
 {
     CPUX86State *cenv = &cpu->env;
@@ -1576,6 +1584,7 @@ static void x86_cpu_realize(Object *obj, Error **errp)
     CPUX86State *env = &cpu->env;
 
     qemu_init_vcpu(env);
+    qemu_register_reset(x86_cpu_machine_reset, cpu);
     cpu_reset(CPU(cpu));
 }
 
