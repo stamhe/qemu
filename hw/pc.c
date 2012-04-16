@@ -878,37 +878,6 @@ DeviceState *cpu_get_current_apic(void)
     }
 }
 
-static DeviceState *apic_init(void *env, uint8_t apic_id)
-{
-    DeviceState *dev;
-    static int apic_mapped;
-
-    if (kvm_irqchip_in_kernel()) {
-        dev = qdev_create(NULL, "kvm-apic");
-    } else {
-        dev = qdev_create(NULL, "apic");
-    }
-    qdev_prop_set_uint8(dev, "id", apic_id);
-    qdev_prop_set_ptr(dev, "cpu_env", env);
-    qdev_init_nofail(dev);
-
-    /* XXX: mapping more APICs at the same memory location */
-    if (apic_mapped == 0) {
-        /* NOTE: the APIC is directly connected to the CPU - it is not
-           on the global memory bus. */
-        /* XXX: what if the base changes? */
-        sysbus_mmio_map(sysbus_from_qdev(dev), 0, MSI_ADDR_BASE);
-        apic_mapped = 1;
-    }
-
-    /* KVM does not support MSI yet. */
-    if (!kvm_irqchip_in_kernel()) {
-        msi_supported = true;
-    }
-
-    return dev;
-}
-
 void pc_acpi_smi_interrupt(void *opaque, int irq, int level)
 {
     CPUX86State *s = opaque;
@@ -934,7 +903,15 @@ static CPUX86State *pc_new_cpu(const char *cpu_model)
         exit(1);
     }
     if ((env->cpuid_features & CPUID_APIC) || smp_cpus > 1) {
-        env->apic_state = apic_init(env, env->cpuid_apic_id);
+        if (kvm_irqchip_in_kernel()) {
+            env->apic_state = qdev_create(NULL, "kvm-apic");
+        } else {
+            env->apic_state = qdev_create(NULL, "apic");
+        }
+        qdev_prop_set_uint8(env->apic_state, "id", env->cpuid_apic_id);
+        qdev_prop_set_ptr(env->apic_state, "cpu_env", env);
+        qdev_init_nofail(env->apic_state);
+
         /* We hard-wire the BSP to the first CPU. */
         if (env->cpu_index == 0) {
             apic_designate_bsp(env->apic_state);
