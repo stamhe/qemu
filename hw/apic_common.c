@@ -43,8 +43,8 @@ uint64_t cpu_get_apic_base(DeviceState *d)
         trace_cpu_get_apic_base((uint64_t)s->apicbase);
         return s->apicbase;
     } else {
-        trace_cpu_get_apic_base(0);
-        return 0;
+        trace_cpu_get_apic_base(MSR_IA32_APICBASE_BSP);
+        return MSR_IA32_APICBASE_BSP;
     }
 }
 
@@ -201,22 +201,28 @@ void apic_init_reset(DeviceState *d)
     s->timer_expiry = -1;
 }
 
+void apic_designate_bsp(DeviceState *d)
+{
+    if (d) {
+        APICCommonState *s = APIC_COMMON(d);
+        s->apicbase |= MSR_IA32_APICBASE_BSP;
+    }
+}
+
 static void apic_reset_common(DeviceState *d)
 {
     APICCommonState *s = DO_UPCAST(APICCommonState, busdev.qdev, d);
     APICCommonClass *info = APIC_COMMON_GET_CLASS(s);
-    bool bsp;
 
-    bsp = cpu_is_bsp(s->cpu_env);
     s->apicbase = 0xfee00000 |
-        (bsp ? MSR_IA32_APICBASE_BSP : 0) | MSR_IA32_APICBASE_ENABLE;
+        (s->apicbase & MSR_IA32_APICBASE_BSP) | MSR_IA32_APICBASE_ENABLE;
 
     s->vapic_paddr = 0;
     info->vapic_base_update(s);
 
     apic_init_reset(d);
 
-    if (bsp) {
+    if (s->apicbase & MSR_IA32_APICBASE_BSP) {
         /*
          * LINT0 delivery mode on CPU #0 is set to ExtInt at initialization
          * time typically by BIOS, so PIC interrupt can be delivered to the
