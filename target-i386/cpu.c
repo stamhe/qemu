@@ -30,6 +30,8 @@
 #include "hyperv.h"
 
 #include "qerror.h"
+#include "hw/qdev.h"
+#include "sysemu.h"
 
 /* feature flags taken from "Intel Processor Identification and the CPUID
  * Instruction" and AMD's "CPUID Specification".  In cases of disagreement
@@ -1489,15 +1491,72 @@ static void x86_set_cpu_model(Object *obj, const char *value, Error **errp)
         fprintf(stderr, "Unable to find x86 CPU definition\n");
         error_set(errp, QERR_INVALID_PARAMETER_COMBINATION);
     }
+
+    mce_init(cpu);
+
+    if (((env->cpuid_features & CPUID_APIC) || smp_cpus > 1) && !env->apic_state) {
+        if (kvm_irqchip_in_kernel()) {
+            env->apic_state = qdev_create(NULL, "kvm-apic");
+        } else {
+            env->apic_state = qdev_create(NULL, "apic");
+        }
+        qdev_prop_set_uint8(env->apic_state, "id", env->cpuid_apic_id);
+        qdev_prop_set_ptr(env->apic_state, "cpu_env", env);
+	object_property_add_child(OBJECT(cpu), "apic", OBJECT(env->apic_state), NULL);
+
+        /* We hard-wire the BSP to the first CPU. */
+        if (env->cpu_index == 0) {
+            apic_designate_bsp(env->apic_state);
+        }
+    }
+}
+
+static CPUDebugExcpHandler *prev_debug_excp_handler;
+
+static void breakpoint_handler(CPUX86State *env)
+{
+    CPUBreakpoint *bp;
+
+    if (env->watchpoint_hit) {
+        if (env->watchpoint_hit->flags & BP_CPU) {
+            env->watchpoint_hit = NULL;
+            if (check_hw_breakpoints(env, 0))
+                raise_exception_env(EXCP01_DB, env);
+            else
+                cpu_resume_from_signal(env, NULL);
+        }
+    } else {
+        QTAILQ_FOREACH(bp, &env->breakpoints, entry)
+            if (bp->pc == env->eip) {
+                if (bp->flags & BP_CPU) {
+                    check_hw_breakpoints(env, 1);
+                    raise_exception_env(EXCP01_DB, env);
+                }
+                break;
+            }
+    }
+    if (prev_debug_excp_handler)
+        prev_debug_excp_handler(env);
 }
 
 static void x86_cpu_initfn(Object *obj)
 {
     X86CPU *cpu = X86_CPU(obj);
     CPUX86State *env = &cpu->env;
+    static int inited;
 
     cpu_exec_init(env);
     env->cpuid_apic_id = env->cpu_index;
+
+    /* init various static tables used in TCG mode */
+    if (tcg_enabled() && !inited) {
+        inited = 1;
+        optimize_flags_init();
+#ifndef CONFIG_USER_ONLY
+        prev_debug_excp_handler =
+            cpu_set_debug_excp_handler(breakpoint_handler);
+#endif
+    }
 
     object_property_add_str(obj, "cpu-model",
         x86_get_cpu_model, x86_set_cpu_model, NULL);
@@ -1507,8 +1566,15 @@ static void x86_cpu_initfn(Object *obj)
 #else
     object_property_set_str(OBJECT(cpu), "qemu32", "cpu-model", NULL);
 #endif
+}
 
-    mce_init(cpu);
+static void x86_cpu_realize(Object *obj, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+
+    qemu_init_vcpu(env);
+    cpu_reset(CPU(cpu));
 }
 
 static void x86_cpu_common_class_init(ObjectClass *oc, void *data)
@@ -1518,6 +1584,7 @@ static void x86_cpu_common_class_init(ObjectClass *oc, void *data)
 
     xcc->parent_reset = cc->reset;
     cc->reset = x86_cpu_reset;
+    oc->realize = x86_cpu_realize;
 }
 
 static const TypeInfo x86_cpu_type_info = {

@@ -894,40 +894,17 @@ static void pc_cpu_reset(void *opaque)
     cpu_state_reset(env);
 }
 
-static CPUX86State *pc_new_cpu(const char *cpu_model)
-{
-    CPUX86State *env;
-
-    env = cpu_init(cpu_model);
-    if (!env) {
-        exit(1);
-    }
-    if ((env->cpuid_features & CPUID_APIC) || smp_cpus > 1) {
-        if (kvm_irqchip_in_kernel()) {
-            env->apic_state = qdev_create(NULL, "kvm-apic");
-        } else {
-            env->apic_state = qdev_create(NULL, "apic");
-        }
-        qdev_prop_set_uint8(env->apic_state, "id", env->cpuid_apic_id);
-        qdev_prop_set_ptr(env->apic_state, "cpu_env", env);
-        qdev_init_nofail(env->apic_state);
-
-        /* We hard-wire the BSP to the first CPU. */
-        if (env->cpu_index == 0) {
-            apic_designate_bsp(env->apic_state);
-        }
-    }
-    qemu_register_reset(pc_cpu_reset, env);
-    pc_cpu_reset(env);
-    return env;
-}
-
 void pc_cpus_init(const char *cpu_model)
 {
+    CPUX86State *env;
     int i;
 
     for(i = 0; i < smp_cpus; i++) {
-        pc_new_cpu(cpu_model);
+        env = cpu_init(cpu_model);
+        if (!env) {
+            exit(1);
+        }
+        qemu_register_reset(pc_cpu_reset, env);
     }
 }
 
