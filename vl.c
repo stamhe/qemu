@@ -1822,10 +1822,10 @@ static int device_help_func(QemuOpts *opts, void *opaque)
 
 static int device_init_func(QemuOpts *opts, void *opaque)
 {
-    DeviceState *dev;
+    Object *obj;
 
-    dev = qdev_device_add(opts);
-    if (!dev)
+    obj = qdev_device_add(opts);
+    if (!obj)
         return -1;
     return 0;
 }

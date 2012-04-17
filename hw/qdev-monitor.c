@@ -376,13 +376,15 @@ static BusState *qbus_find(const char *path)
     }
 }
 
-DeviceState *qdev_device_add(QemuOpts *opts)
+Object *qdev_device_add(QemuOpts *opts)
 {
     ObjectClass *oklass;
+    Object *obj;
     DeviceClass *k;
     const char *driver, *path, *id;
     DeviceState *qdev;
     BusState *bus;
+    Error *err = NULL;
 
     driver = qemu_opt_get(opts, "driver");
     if (!driver) {
@@ -406,7 +408,13 @@ DeviceState *qdev_device_add(QemuOpts *opts)
         return NULL;
     }
 
-    k = DEVICE_CLASS(oklass);
+    k = ((DeviceClass *)
+        object_class_dynamic_cast(OBJECT_CLASS(oklass), TYPE_DEVICE));
+
+    obj = DEVICE(object_new(driver));
+    if (k == NULL) {
+        goto common_init;
+    }
 
     /* find bus */
     path = qemu_opt_get(opts, "bus");
@@ -438,33 +446,35 @@ DeviceState *qdev_device_add(QemuOpts *opts)
     }
 
     /* create device, set properties */
-    qdev = DEVICE(object_new(driver));
+    qdev = DEVICE(obj);
     qdev_set_parent_bus(qdev, bus);
 
     id = qemu_opts_id(opts);
     if (id) {
         qdev->id = id;
     }
-    if (qemu_opt_foreach(opts, set_property, qdev, 1) != 0) {
-        qdev_free(qdev);
-        return NULL;
-    }
     if (qdev->id) {
-        object_property_add_child(qdev_get_peripheral(), qdev->id,
-                                  OBJECT(qdev), NULL);
+        object_property_add_child(qdev_get_peripheral(), qdev->id, obj, NULL);
     } else {
         static int anon_count;
         gchar *name = g_strdup_printf("device[%d]", anon_count++);
-        object_property_add_child(qdev_get_peripheral_anon(), name,
-                                  OBJECT(qdev), NULL);
+        object_property_add_child(qdev_get_peripheral_anon(), name, obj, NULL);
         g_free(name);
-    }        
-    if (qdev_init(qdev) < 0) {
-        qerror_report(QERR_DEVICE_INIT_FAILED, driver);
-        return NULL;
     }
     qdev->opts = opts;
-    return qdev;
+
+common_init:
+    if (qemu_opt_foreach(opts, set_property, obj, 1) != 0) {
+        object_delete(obj);
+        return NULL;
+    }
+
+    object_property_set_bool(obj, true, "realized", &err);
+    if (err) {
+        qerror_report_err(err);
+        return NULL;
+    }
+    return obj;
 }
 
 
