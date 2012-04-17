@@ -378,7 +378,7 @@ static BusState *qbus_find(const char *path)
 
 DeviceState *qdev_device_add(QemuOpts *opts)
 {
-    ObjectClass *obj;
+    ObjectClass *oklass;
     DeviceClass *k;
     const char *driver, *path, *id;
     DeviceState *qdev;
@@ -391,22 +391,22 @@ DeviceState *qdev_device_add(QemuOpts *opts)
     }
 
     /* find driver */
-    obj = object_class_by_name(driver);
-    if (!obj) {
+    oklass = object_class_by_name(driver);
+    if (!oklass) {
         const char *typename = find_typename_by_alias(driver);
 
         if (typename) {
             driver = typename;
-            obj = object_class_by_name(driver);
+            oklass = object_class_by_name(driver);
         }
     }
 
-    if (!obj) {
+    if (!oklass) {
         qerror_report(QERR_INVALID_PARAMETER_VALUE, "driver", "device type");
         return NULL;
     }
 
-    k = DEVICE_CLASS(obj);
+    k = DEVICE_CLASS(oklass);
 
     /* find bus */
     path = qemu_opt_get(opts, "bus");
