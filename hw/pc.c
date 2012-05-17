@@ -930,7 +930,6 @@ static X86CPU *pc_new_cpu(const char *cpu_model)
 
     cpu = cpu_x86_init(cpu_model);
     if (cpu == NULL) {
-        fprintf(stderr, "Unable to find x86 CPU definition\n");
         exit(1);
     }
     env = &cpu->env;
@@ -945,15 +944,6 @@ static X86CPU *pc_new_cpu(const char *cpu_model)
 void pc_cpus_init(const char *cpu_model)
 {
     int i;
-
-    /* init CPUs */
-    if (cpu_model == NULL) {
-#ifdef TARGET_X86_64
-        cpu_model = "qemu64";
-#else
-        cpu_model = "qemu32";
-#endif
-    }
 
     for(i = 0; i < smp_cpus; i++) {
         pc_new_cpu(cpu_model);

@@ -1154,12 +1154,10 @@ int cpu_x86_get_descr_debug(CPUX86State *env, unsigned int selector,
 X86CPU *cpu_x86_init(const char *cpu_model)
 {
     X86CPU *cpu;
-    CPUX86State *env;
+    Error *errp = NULL;
     static int inited;
 
     cpu = X86_CPU(object_new(TYPE_X86_CPU));
-    env = &cpu->env;
-    env->cpu_model_str = cpu_model;
 
     /* init various static tables used in TCG mode */
     if (tcg_enabled() && !inited) {
@@ -1170,7 +1168,17 @@ X86CPU *cpu_x86_init(const char *cpu_model)
             cpu_set_debug_excp_handler(breakpoint_handler);
 #endif
     }
-    if (cpu_x86_register(cpu, cpu_model) < 0) {
+
+    if (cpu_model) {
+        object_property_set_str(OBJECT(cpu), cpu_model, "cpu-model", &errp);
+    } else {
+#ifdef TARGET_X86_64
+        object_property_set_str(OBJECT(cpu), "qemu64", "cpu-model", &errp);
+#else
+        object_property_set_str(OBJECT(cpu), "qemu32", "cpu-model", &errp);
+#endif
+    }
+    if (errp) {
         object_delete(OBJECT(cpu));
         return NULL;
     }
