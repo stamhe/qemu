@@ -36,14 +36,26 @@ static void cpu_common_reset(CPUState *cpu)
 
 static void cpu_class_init(ObjectClass *klass, void *data)
 {
+#ifndef CONFIG_USER_ONLY
+    DeviceClass *dc = DEVICE_CLASS(klass);
+#endif
     CPUClass *k = CPU_CLASS(klass);
+
+#ifndef CONFIG_USER_ONLY
+    /* Overwrite this in subclasses for which hotplug is supported. */
+    dc->no_user = 1;
+#endif
 
     k->reset = cpu_common_reset;
 }
 
 static TypeInfo cpu_type_info = {
     .name = TYPE_CPU,
+#ifdef CONFIG_USER_ONLY
     .parent = TYPE_OBJECT,
+#else
+    .parent = TYPE_DEVICE,
+#endif
     .instance_size = sizeof(CPUState),
     .abstract = true,
     .class_size = sizeof(CPUClass),

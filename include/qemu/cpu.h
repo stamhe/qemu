@@ -21,6 +21,9 @@
 #define QEMU_CPU_H
 
 #include "qemu/object.h"
+#ifndef CONFIG_USER_ONLY
+#include "hw/qdev.h"
+#endif
 
 /**
  * SECTION:cpu
@@ -45,7 +48,11 @@ typedef struct CPUState CPUState;
  */
 typedef struct CPUClass {
     /*< private >*/
+#ifdef CONFIG_USER_ONLY
     ObjectClass parent_class;
+#else
+    DeviceClass parent_class;
+#endif
     /*< public >*/
 
     void (*reset)(CPUState *cpu);
