@@ -70,8 +70,6 @@
 #define FW_CFG_E820_TABLE (FW_CFG_ARCH_LOCAL + 3)
 #define FW_CFG_HPET (FW_CFG_ARCH_LOCAL + 4)
 
-#define MSI_ADDR_BASE 0xfee00000
-
 #define E820_NR_ENTRIES		16
 
 struct e820_entry {
@@ -882,7 +880,6 @@ DeviceState *cpu_get_current_apic(void)
 static DeviceState *apic_init(void *env, uint8_t apic_id)
 {
     DeviceState *dev;
-    static int apic_mapped;
 
     if (kvm_irqchip_in_kernel()) {
         dev = qdev_create(NULL, "kvm-apic");
@@ -895,15 +892,6 @@ static DeviceState *apic_init(void *env, uint8_t apic_id)
     qdev_prop_set_uint8(dev, "id", apic_id);
     qdev_prop_set_ptr(dev, "cpu_env", env);
     qdev_init_nofail(dev);
-
-    /* XXX: mapping more APICs at the same memory location */
-    if (apic_mapped == 0) {
-        /* NOTE: the APIC is directly connected to the CPU - it is not
-           on the global memory bus. */
-        /* XXX: what if the base changes? */
-        sysbus_mmio_map(sysbus_from_qdev(dev), 0, MSI_ADDR_BASE);
-        apic_mapped = 1;
-    }
 
     return dev;
 }

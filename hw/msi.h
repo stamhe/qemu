@@ -40,4 +40,6 @@ static inline bool msi_present(const PCIDevice *dev)
     return dev->cap_present & QEMU_PCI_CAP_MSI;
 }
 
+#define MSI_ADDR_BASE 0xfee00000
+
 #endif /* QEMU_MSI_H */
