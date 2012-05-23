@@ -42,7 +42,6 @@
 #include "sysbus.h"
 #include "sysemu.h"
 #include "kvm.h"
-#include "xen.h"
 #include "blockdev.h"
 #include "ui/qemu-spice.h"
 #include "memory.h"
@@ -877,25 +876,6 @@ DeviceState *cpu_get_current_apic(void)
     }
 }
 
-static DeviceState *apic_init(void *env, uint8_t apic_id)
-{
-    DeviceState *dev;
-
-    if (kvm_irqchip_in_kernel()) {
-        dev = qdev_create(NULL, "kvm-apic");
-    } else if (xen_enabled()) {
-        dev = qdev_create(NULL, "xen-apic");
-    } else {
-        dev = qdev_create(NULL, "apic");
-    }
-
-    qdev_prop_set_uint8(dev, "id", apic_id);
-    qdev_prop_set_ptr(dev, "cpu_env", env);
-    qdev_init_nofail(dev);
-
-    return dev;
-}
-
 void pc_acpi_smi_interrupt(void *opaque, int irq, int level)
 {
     CPUX86State *s = opaque;
@@ -911,30 +891,17 @@ static void pc_cpu_reset(void *opaque)
     cpu_reset(CPU(cpu));
 }
 
-static X86CPU *pc_new_cpu(const char *cpu_model)
-{
-    X86CPU *cpu;
-    CPUX86State *env;
-
-    cpu = cpu_x86_init(cpu_model);
-    if (cpu == NULL) {
-        exit(1);
-    }
-    env = &cpu->env;
-    if ((env->cpuid_features & CPUID_APIC) || smp_cpus > 1) {
-        env->apic_state = apic_init(env, env->cpuid_apic_id);
-    }
-    qemu_register_reset(pc_cpu_reset, cpu);
-    pc_cpu_reset(cpu);
-    return cpu;
-}
-
 void pc_cpus_init(const char *cpu_model)
 {
+    X86CPU *cpu;
     int i;
 
     for(i = 0; i < smp_cpus; i++) {
-        pc_new_cpu(cpu_model);
+        cpu = cpu_x86_init(cpu_model);
+        if (cpu == NULL) {
+            exit(1);
+        }
+        qemu_register_reset(pc_cpu_reset, cpu);
     }
 }
 
