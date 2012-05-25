@@ -155,13 +155,12 @@ static inline TranslationBlock *tb_find_fast(CPUArchState *env)
 }
 
 static CPUDebugExcpHandler *debug_excp_handler;
+CPUDebugExcpHandler *prev_debug_excp_handler;
 
-CPUDebugExcpHandler *cpu_set_debug_excp_handler(CPUDebugExcpHandler *handler)
+void cpu_set_debug_excp_handler(CPUDebugExcpHandler *handler)
 {
-    CPUDebugExcpHandler *old_handler = debug_excp_handler;
-
+    prev_debug_excp_handler = debug_excp_handler;
     debug_excp_handler = handler;
-    return old_handler;
 }
 
 static void cpu_handle_debug_exception(CPUArchState *env)
