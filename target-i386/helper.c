@@ -21,6 +21,7 @@
 #include "kvm.h"
 #ifndef CONFIG_USER_ONLY
 #include "sysemu.h"
+#include "hw/qdev.h"
 #include "monitor.h"
 #endif
 
@@ -1153,8 +1154,22 @@ X86CPU *cpu_x86_init(const char *cpu_model)
 {
     X86CPU *cpu;
     Error *errp = NULL;
+#ifndef CONFIG_USER_ONLY
+    char *name;
+#endif
 
     cpu = X86_CPU(object_new(TYPE_X86_CPU));
+
+#ifndef CONFIG_USER_ONLY
+    name = g_strdup_printf("cpu[%d]", cpu->env.cpu_index);
+    object_property_add_child(OBJECT(qdev_get_machine()), name,
+                              OBJECT(cpu), &errp);
+    g_free(name);
+    if (error_is_set(&errp)) {
+        qerror_report_err(errp);
+        exit(1);
+    }
+#endif
 
     if (cpu_model) {
         object_property_set_str(OBJECT(cpu), cpu_model, "cpu-model", &errp);
