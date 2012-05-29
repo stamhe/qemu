@@ -1731,6 +1731,27 @@ static void mce_init(X86CPU *cpu)
     }
 }
 
+static char *x86_get_cpu_model(Object *obj, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+    return g_strdup(env->cpu_model_str);
+}
+
+static void x86_set_cpu_model(Object *obj, const char *value, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+
+    g_free((gpointer)env->cpu_model_str);
+    env->cpu_model_str = g_strdup(value);
+
+    if (cpu_x86_register(cpu, env->cpu_model_str) < 0) {
+        fprintf(stderr, "Unable to find x86 CPU definition\n");
+        error_set(errp, QERR_INVALID_PARAMETER_COMBINATION);
+    }
+}
+
 void x86_cpu_realize(Object *obj, Error **errp)
 {
     X86CPU *cpu = X86_CPU(obj);
@@ -1771,6 +1792,9 @@ static void x86_cpu_initfn(Object *obj)
     object_property_add(obj, "tsc-frequency", "int",
                         x86_cpuid_get_tsc_freq,
                         x86_cpuid_set_tsc_freq, NULL, NULL, NULL);
+
+    object_property_add_str(obj, "cpu-model",
+        x86_get_cpu_model, x86_set_cpu_model, NULL);
 
     env->cpuid_apic_id = env->cpu_index;
 
