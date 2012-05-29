@@ -23,6 +23,7 @@
 
 #include "cpu.h"
 #include "kvm.h"
+#include "hw/xen.h"
 
 #include "qemu-option.h"
 #include "qemu-config.h"
@@ -30,6 +31,11 @@
 #include "qapi/qapi-visit-core.h"
 
 #include "hyperv.h"
+
+#include "sysemu.h"
+#ifndef CONFIG_USER_ONLY
+#include "hw/sysbus.h"
+#endif
 
 /* feature flags taken from "Intel Processor Identification and the CPUID
  * Instruction" and AMD's "CPUID Specification".  In cases of disagreement
@@ -1749,12 +1755,68 @@ static void x86_set_cpu_model(Object *obj, const char *value, Error **errp)
     if (cpu_x86_register(cpu, env->cpu_model_str) < 0) {
         fprintf(stderr, "Unable to find x86 CPU definition\n");
         error_set(errp, QERR_INVALID_PARAMETER_COMBINATION);
+        return;
+    }
+
+#ifndef CONFIG_USER_ONLY
+    if (((env->cpuid_features & CPUID_APIC) || smp_cpus > 1)) {
+        if (kvm_irqchip_in_kernel()) {
+            env->apic_state = qdev_create(NULL, "kvm-apic");
+        } else if (xen_enabled()) {
+            env->apic_state = qdev_create(NULL, "xen-apic");
+        } else {
+            env->apic_state = qdev_create(NULL, "apic");
+        }
+        object_property_add_child(OBJECT(cpu), "apic",
+            OBJECT(env->apic_state), NULL);
+
+        qdev_prop_set_uint8(env->apic_state, "id", env->cpuid_apic_id);
+        object_property_set_link(OBJECT(env->apic_state), OBJECT(cpu), "cpu",
+                                 errp);
+        if (error_is_set(errp)) {
+            return;
+        }
+    }
+#endif
+}
+
+#ifndef CONFIG_USER_ONLY
+#define MSI_ADDR_BASE 0xfee00000
+
+static void x86_cpu_apic_init(X86CPU *cpu, Error **errp)
+{
+    static int apic_mapped;
+    CPUX86State *env = &cpu->env;
+
+    if (env->apic_state == NULL) {
+        return;
+    }
+
+    if (qdev_init(env->apic_state)) {
+        error_set(errp, QERR_DEVICE_INIT_FAILED,
+                  object_get_typename(OBJECT(env->apic_state)));
+        return;
+    }
+
+    /* XXX: mapping more APICs at the same memory location */
+    if (apic_mapped == 0) {
+        /* NOTE: the APIC is directly connected to the CPU - it is not
+           on the global memory bus. */
+        /* XXX: what if the base changes? */
+        sysbus_mmio_map(sysbus_from_qdev(env->apic_state), 0, MSI_ADDR_BASE);
+        apic_mapped = 1;
     }
 }
+#endif
 
 void x86_cpu_realize(Object *obj, Error **errp)
 {
     X86CPU *cpu = X86_CPU(obj);
+
+    x86_cpu_apic_init(cpu, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
 
     mce_init(cpu);
     qemu_init_vcpu(&cpu->env);

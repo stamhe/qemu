@@ -42,7 +42,6 @@
 #include "sysbus.h"
 #include "sysemu.h"
 #include "kvm.h"
-#include "xen.h"
 #include "blockdev.h"
 #include "ui/qemu-spice.h"
 #include "memory.h"
@@ -69,8 +68,6 @@
 #define FW_CFG_IRQ0_OVERRIDE (FW_CFG_ARCH_LOCAL + 2)
 #define FW_CFG_E820_TABLE (FW_CFG_ARCH_LOCAL + 3)
 #define FW_CFG_HPET (FW_CFG_ARCH_LOCAL + 4)
-
-#define MSI_ADDR_BASE 0xfee00000
 
 #define E820_NR_ENTRIES		16
 
@@ -879,42 +876,6 @@ DeviceState *cpu_get_current_apic(void)
     }
 }
 
-static DeviceState *apic_init(void *env, uint8_t apic_id)
-{
-    DeviceState *dev;
-    Error *error = NULL;
-    static int apic_mapped;
-
-    if (kvm_irqchip_in_kernel()) {
-        dev = qdev_create(NULL, "kvm-apic");
-    } else if (xen_enabled()) {
-        dev = qdev_create(NULL, "xen-apic");
-    } else {
-        dev = qdev_create(NULL, "apic");
-    }
-
-    qdev_prop_set_uint8(dev, "id", apic_id);
-    object_property_set_link(OBJECT(dev), OBJECT(ENV_GET_CPU(env)), "cpu",
-                             &error);
-    if (error_is_set(&error)) {
-        qerror_report_err(error);
-        error_free(error);
-        exit(1);
-    }
-    qdev_init_nofail(dev);
-
-    /* XXX: mapping more APICs at the same memory location */
-    if (apic_mapped == 0) {
-        /* NOTE: the APIC is directly connected to the CPU - it is not
-           on the global memory bus. */
-        /* XXX: what if the base changes? */
-        sysbus_mmio_map(sysbus_from_qdev(dev), 0, MSI_ADDR_BASE);
-        apic_mapped = 1;
-    }
-
-    return dev;
-}
-
 void pc_acpi_smi_interrupt(void *opaque, int irq, int level)
 {
     CPUX86State *s = opaque;
@@ -933,17 +894,12 @@ static void pc_cpu_reset(void *opaque)
 static X86CPU *pc_new_cpu(const char *cpu_model)
 {
     X86CPU *cpu;
-    CPUX86State *env;
 
     cpu = cpu_x86_init(cpu_model);
     if (cpu == NULL) {
         exit(1);
     }
-    env = &cpu->env;
 
-    if ((env->cpuid_features & CPUID_APIC) || smp_cpus > 1) {
-        env->apic_state = apic_init(env, env->cpuid_apic_id);
-    }
     qemu_register_reset(pc_cpu_reset, cpu);
     pc_cpu_reset(cpu);
     return cpu;
