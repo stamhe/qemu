@@ -1781,6 +1781,14 @@ static void x86_set_cpu_model(Object *obj, const char *value, Error **errp)
 }
 
 #ifndef CONFIG_USER_ONLY
+
+/* TODO: remove me, when reset over QOM tree is implemented */
+static void x86_cpu_machine_reset_cb(void *opaque)
+{
+    X86CPU *cpu = opaque;
+    cpu_reset(CPU(cpu));
+}
+
 #define MSI_ADDR_BASE 0xfee00000
 
 static void x86_cpu_apic_init(X86CPU *cpu, Error **errp)
@@ -1813,13 +1821,17 @@ void x86_cpu_realize(Object *obj, Error **errp)
 {
     X86CPU *cpu = X86_CPU(obj);
 
+#ifndef CONFIG_USER_ONLY
     x86_cpu_apic_init(cpu, errp);
     if (error_is_set(errp)) {
         return;
     }
+    qemu_register_reset(x86_cpu_machine_reset_cb, cpu);
+#endif
 
     mce_init(cpu);
     qemu_init_vcpu(&cpu->env);
+    cpu_reset(CPU(cpu));
 }
 
 static void x86_cpu_initfn(Object *obj)

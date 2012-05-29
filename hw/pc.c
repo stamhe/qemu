@@ -885,32 +885,16 @@ void pc_acpi_smi_interrupt(void *opaque, int irq, int level)
     }
 }
 
-static void pc_cpu_reset(void *opaque)
-{
-    X86CPU *cpu = opaque;
-    cpu_reset(CPU(cpu));
-}
-
-static X86CPU *pc_new_cpu(const char *cpu_model)
-{
-    X86CPU *cpu;
-
-    cpu = cpu_x86_init(cpu_model);
-    if (cpu == NULL) {
-        exit(1);
-    }
-
-    qemu_register_reset(pc_cpu_reset, cpu);
-    pc_cpu_reset(cpu);
-    return cpu;
-}
-
 void pc_cpus_init(const char *cpu_model)
 {
+    X86CPU *cpu;
     int i;
 
-    for(i = 0; i < smp_cpus; i++) {
-        pc_new_cpu(cpu_model);
+    for (i = 0; i < smp_cpus; i++) {
+        cpu = cpu_x86_init(cpu_model);
+        if (cpu == NULL) {
+            exit(1);
+        }
     }
 }
 
