@@ -918,12 +918,6 @@ void pc_acpi_smi_interrupt(void *opaque, int irq, int level)
     }
 }
 
-static void pc_cpu_reset(void *opaque)
-{
-    X86CPU *cpu = opaque;
-    cpu_reset(CPU(cpu));
-}
-
 static X86CPU *pc_new_cpu(const char *cpu_model)
 {
     X86CPU *cpu;
@@ -938,9 +932,8 @@ static X86CPU *pc_new_cpu(const char *cpu_model)
     if ((env->cpuid_features & CPUID_APIC) || smp_cpus > 1) {
         env->apic_state = apic_init(env, env->cpuid_apic_id);
     }
-    qemu_register_reset(pc_cpu_reset, cpu);
+
     x86_cpu_realize(OBJECT(cpu), NULL);
-    pc_cpu_reset(cpu);
     return cpu;
 }
 
