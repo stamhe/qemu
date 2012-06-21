@@ -9,6 +9,7 @@
 #include "qemu/object.h"
 #include "error.h"
 #include "net.h"
+#include "hw/irq.h"
 
 typedef struct Property Property;
 
