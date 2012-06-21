@@ -28,6 +28,7 @@
 
 #include "qemu-common.h"
 #include "qemu-option.h"
+#include "net.h"
 
 #define DEFAULT_NETWORK_SCRIPT "/etc/qemu-ifup"
 #define DEFAULT_NETWORK_DOWN_SCRIPT "/etc/qemu-ifdown"

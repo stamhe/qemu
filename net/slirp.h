@@ -27,6 +27,7 @@
 #include "qemu-common.h"
 #include "qdict.h"
 #include "qemu-option.h"
+#include "net.h"
 
 #ifdef CONFIG_SLIRP
 

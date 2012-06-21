@@ -28,6 +28,7 @@
 
 typedef struct NetPacket NetPacket;
 typedef struct NetQueue NetQueue;
+typedef struct VLANClientState VLANClientState;
 
 typedef void (NetPacketSent) (VLANClientState *sender, ssize_t ret);
 

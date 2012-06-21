@@ -221,7 +221,6 @@ typedef int (*DMA_transfer_handler) (void *opaque, int nchan, int pos, int size)
 
 /* A load of opaque types so that device init declarations don't have to
    pull in all the real definitions.  */
-typedef struct NICInfo NICInfo;
 typedef struct HCIInfo HCIInfo;
 typedef struct AudioState AudioState;
 typedef struct DriveInfo DriveInfo;
@@ -232,9 +231,6 @@ typedef struct DisplayAllocator DisplayAllocator;
 typedef struct PixelFormat PixelFormat;
 typedef struct TextConsole TextConsole;
 typedef TextConsole QEMUConsole;
-typedef struct MACAddr MACAddr;
-typedef struct VLANState VLANState;
-typedef struct VLANClientState VLANClientState;
 typedef struct i2c_bus i2c_bus;
 typedef struct ISABus ISABus;
 typedef struct ISADevice ISADevice;

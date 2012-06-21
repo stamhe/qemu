@@ -8,9 +8,12 @@
 #include "net/queue.h"
 #include "vmstate.h"
 
-struct MACAddr {
+typedef struct VLANClientState VLANClientState;
+typedef struct VLANState VLANState;
+
+typedef struct MACAddr {
     uint8_t a[6];
-};
+} MACAddr;
 
 /* qdev nic properties */
 
@@ -88,6 +91,23 @@ struct VLANState {
     NetQueue *send_queue;
 };
 
+/* NIC info */
+
+#define MAX_NICS 8
+
+typedef struct NICInfo {
+    MACAddr macaddr;
+    char *model;
+    char *name;
+    char *devaddr;
+    VLANState *vlan;
+    VLANClientState *netdev;
+    int used;         /* is this slot in nd_table[] being used? */
+    int instantiated; /* does this NICInfo correspond to an instantiated NIC? */
+    int nvectors;
+} NICInfo;
+
+
 VLANState *qemu_find_vlan(int id, int allocate);
 VLANClientState *qemu_find_netdev(const char *id);
 VLANClientState *qemu_new_net_client(NetClientInfo *info,
@@ -124,22 +144,6 @@ int qemu_find_nic_model(NICInfo *nd, const char * const *models,
                         const char *default_model);
 
 void do_info_network(Monitor *mon);
-
-/* NIC info */
-
-#define MAX_NICS 8
-
-struct NICInfo {
-    MACAddr macaddr;
-    char *model;
-    char *name;
-    char *devaddr;
-    VLANState *vlan;
-    VLANClientState *netdev;
-    int used;         /* is this slot in nd_table[] being used? */
-    int instantiated; /* does this NICInfo correspond to an instantiated NIC? */
-    int nvectors;
-};
 
 extern int nb_nics;
 extern NICInfo nd_table[MAX_NICS];

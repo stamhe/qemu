@@ -8,6 +8,7 @@
 #include "qapi/qapi-visit-core.h"
 #include "qemu/object.h"
 #include "error.h"
+#include "net.h"
 
 typedef struct Property Property;
 
