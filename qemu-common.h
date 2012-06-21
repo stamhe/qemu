@@ -230,7 +230,6 @@ typedef struct DisplayAllocator DisplayAllocator;
 typedef struct PixelFormat PixelFormat;
 typedef struct TextConsole TextConsole;
 typedef TextConsole QEMUConsole;
-typedef struct CharDriverState CharDriverState;
 typedef struct MACAddr MACAddr;
 typedef struct VLANState VLANState;
 typedef struct VLANClientState VLANClientState;

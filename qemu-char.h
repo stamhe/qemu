@@ -52,7 +52,7 @@ typedef struct {
 
 typedef void IOEventHandler(void *opaque, int event);
 
-struct CharDriverState {
+typedef struct CharDriverState {
     void (*init)(struct CharDriverState *s);
     int (*chr_write)(struct CharDriverState *s, const uint8_t *buf, int len);
     void (*chr_update_read_handler)(struct CharDriverState *s);
@@ -75,7 +75,7 @@ struct CharDriverState {
     int opened;
     int avail_connections;
     QTAILQ_ENTRY(CharDriverState) next;
-};
+} CharDriverState;
 
 /**
  * @qemu_chr_new_from_opts:
