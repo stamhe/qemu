@@ -11,7 +11,7 @@
 #define TRACE_CONTROL_H
 
 #include "qemu-common.h"
-
+#include "qemu-log.h"
 
 /** Print the state of all events. */
 void trace_print_events(FILE *stream, fprintf_function stream_printf);

@@ -91,9 +91,6 @@ struct iovec {
 #include <sys/uio.h>
 #endif
 
-typedef int (*fprintf_function)(FILE *f, const char *fmt, ...)
-    GCC_FMT_ATTR(2, 3);
-
 #ifdef _WIN32
 #define fsync _commit
 #if !defined(lseek)

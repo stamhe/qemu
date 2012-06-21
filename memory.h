@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "qemu-log.h"
 #include "qemu-common.h"
 #include "cpu-common.h"
 #include "targphys.h"

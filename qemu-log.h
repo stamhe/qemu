@@ -1,6 +1,9 @@
 #ifndef QEMU_LOG_H
 #define QEMU_LOG_H
 
+#include <stdio.h>
+#include <compiler.h>
+
 /* The deprecated global variables: */
 extern FILE *logfile;
 extern int loglevel;
@@ -91,5 +94,6 @@ extern int loglevel;
             logfile = (f);            \
     } while (0)
 
+typedef int (*fprintf_function)(FILE *f, const char *fmt, ...) GCC_FMT_ATTR(2, 3);
 
 #endif

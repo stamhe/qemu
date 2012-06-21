@@ -21,6 +21,7 @@
 
 #include "config.h"
 #include "qemu-common.h"
+#include "qemu-log.h"
 
 #ifdef TARGET_X86_64
 #define TARGET_LONG_BITS 64
