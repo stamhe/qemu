@@ -112,6 +112,9 @@ static inline char *realpath(const char *path, char *resolved_path)
 void configure_icount(const char *option);
 extern int use_icount;
 
+typedef struct BlockDriverState BlockDriverState;
+typedef struct IRQState *qemu_irq;
+
 /* FIXME: Remove NEED_CPU_H.  */
 #ifndef NEED_CPU_H
 
@@ -221,7 +224,6 @@ typedef int (*DMA_transfer_handler) (void *opaque, int nchan, int pos, int size)
 typedef struct NICInfo NICInfo;
 typedef struct HCIInfo HCIInfo;
 typedef struct AudioState AudioState;
-typedef struct BlockDriverState BlockDriverState;
 typedef struct DriveInfo DriveInfo;
 typedef struct DisplayState DisplayState;
 typedef struct DisplayChangeListener DisplayChangeListener;
@@ -250,7 +252,6 @@ typedef struct PCIEPort PCIEPort;
 typedef struct PCIESlot PCIESlot;
 typedef struct MSIMessage MSIMessage;
 typedef struct SerialState SerialState;
-typedef struct IRQState *qemu_irq;
 typedef struct PCMCIACardState PCMCIACardState;
 typedef struct MouseTransformInfo MouseTransformInfo;
 typedef struct uWireSlave uWireSlave;
