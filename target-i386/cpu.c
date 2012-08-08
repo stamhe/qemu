@@ -362,6 +362,36 @@ PropertyInfo qdev_prop_hv_relaxed = {
     .info  = &qdev_prop_hv_relaxed,                                            \
 }
 
+static void x86_get_hv_vapic(Object *obj, Visitor *v, void *opaque,
+                                 const char *name, Error **errp)
+{
+    bool value = hyperv_vapic_recommended();
+
+    visit_type_bool(v, &value, name, errp);
+}
+
+static void x86_set_hv_vapic(Object *obj, Visitor *v, void *opaque,
+                                 const char *name, Error **errp)
+{
+    bool value;
+
+    visit_type_bool(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+    hyperv_enable_vapic_recommended(value);
+}
+
+PropertyInfo qdev_prop_hv_vapic = {
+    .name  = "boolean",
+    .get   = x86_get_hv_vapic,
+    .set   = x86_set_hv_vapic,
+};
+#define DEFINE_PROP_HV_VAPIC(_n) {                                             \
+    .name  = _n,                                                               \
+    .info  = &qdev_prop_hv_vapic,                                              \
+}
+
 #define FEAT(_name, _field, _bit, _val) \
     DEFINE_PROP_BIT(_name, X86CPU, _field, _bit, _val)
 
@@ -523,6 +553,7 @@ static Property cpu_x86_properties[] = {
     DEFINE_PROP_UINT32("level", X86CPU, env.cpuid_level, 0),
     DEFINE_PROP_HV_SPINLOCKS("hv_spinlocks"),
     DEFINE_PROP_HV_RELAXED("hv_relaxed"),
+    DEFINE_PROP_HV_VAPIC("hv_vapic"),
     DEFINE_PROP_END_OF_LIST(),
  };
 
@@ -1560,7 +1591,7 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features,
         } else if (!strcmp(featurestr, "hv_relaxed")) {
             qdict_put(*props, featurestr, qstring_from_str("on"));
         } else if (!strcmp(featurestr, "hv_vapic")) {
-            hyperv_enable_vapic_recommended(true);
+            qdict_put(*props, featurestr, qstring_from_str("on"));
         } else {
             fprintf(stderr, "feature string `%s' not in format (+feature|-feature|feature=xyz)\n", featurestr);
             goto error;
