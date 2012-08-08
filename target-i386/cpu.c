@@ -1295,6 +1295,50 @@ static PropertyInfo qdev_prop_tsc_freq = {
 #define DEFINE_PROP_TSC_FREQ(_n)                                               \
     DEFINE_PROP(_n, X86CPU, env.tsc_khz, qdev_prop_tsc_freq, int32_t)
 
+static void x86_get_hv_spinlocks(Object *obj, Visitor *v, void *opaque,
+                                 const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    int64_t value = cpu->env.hyperv_spinlock_attempts;
+
+    visit_type_int(v, &value, name, errp);
+}
+
+static void x86_set_hv_spinlocks(Object *obj, Visitor *v, void *opaque,
+                                 const char *name, Error **errp)
+{
+    const int64_t min = 0xFFF;
+    const int64_t max = UINT_MAX;
+    X86CPU *cpu = X86_CPU(obj);
+    int64_t value;
+
+    visit_type_int(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+
+    if (value < min || value > max) {
+        error_setg(errp, "Property %s.%s doesn't take value %" PRId64
+                  " (minimum: %" PRId64 ", maximum: %" PRId64 ")",
+                  object_get_typename(obj), name ? name : "null",
+                  value, min, max);
+        return;
+    }
+    cpu->env.hyperv_spinlock_attempts = value;
+}
+
+static PropertyInfo qdev_prop_spinlocks = {
+    .name  = "int",
+    .get   = x86_get_hv_spinlocks,
+    .set   = x86_set_hv_spinlocks,
+};
+#define DEFINE_PROP_HV_SPINLOCKS(_n, _defval) {                                \
+    .name  = _n,                                                               \
+    .info  = &qdev_prop_spinlocks,                                             \
+    .qtype = QTYPE_QINT,                                                       \
+    .defval = _defval                                                          \
+}
+
 static Property cpu_x86_properties[] = {
     DEFINE_PROP_FAMILY("family"),
     DEFINE_PROP_MODEL("model"),
@@ -1304,6 +1348,7 @@ static Property cpu_x86_properties[] = {
     DEFINE_PROP_VENDOR("vendor"),
     DEFINE_PROP_MODEL_ID("model-id"),
     DEFINE_PROP_TSC_FREQ("tsc-frequency"),
+    DEFINE_PROP_HV_SPINLOCKS("hv-spinlocks", HYPERV_SPINLOCK_NEVER_RETRY),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -1421,6 +1466,7 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
             } else if (!strcmp(featurestr, "hv-spinlocks")) {
                 char *err;
                 const int min = 0xFFF;
+                char num[32];
                 numvalue = strtoul(val, &err, 0);
                 if (!*val || *err) {
                     error_setg(errp, "bad numerical value %s", val);
@@ -1432,7 +1478,8 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
                             min);
                     numvalue = min;
                 }
-                env->hyperv_spinlock_attempts = numvalue;
+                snprintf(num, sizeof(num), "%" PRId32, numvalue);
+                object_property_parse(OBJECT(cpu), num, featurestr, errp);
             } else {
                 error_setg(errp, "unrecognized feature %s", featurestr);
                 goto out;
@@ -1597,7 +1644,6 @@ static void cpu_x86_register(X86CPU *cpu, const char *name, Error **errp)
         def->kvm_features |= kvm_default_features;
     }
     def->ext_features |= CPUID_EXT_HYPERVISOR;
-    env->hyperv_spinlock_attempts = HYPERV_SPINLOCK_NEVER_RETRY;
 
     object_property_set_str(OBJECT(cpu), def->vendor, "vendor", errp);
     object_property_set_int(OBJECT(cpu), def->level, "level", errp);
