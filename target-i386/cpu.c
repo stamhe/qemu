@@ -1763,7 +1763,7 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
         } else if (!strcmp(featurestr, "enforce")) {
             check_cpuid = enforce_cpuid = 1;
         } else if (!strcmp(featurestr, "hv_relaxed")) {
-            cpu->hyperv_relaxed_timing = true;
+            object_property_parse(OBJECT(cpu), "on", "hv-relaxed", errp);
         } else if (!strcmp(featurestr, "hv_vapic")) {
             cpu->hyperv_vapic = true;
         } else {
@@ -2719,6 +2719,7 @@ static void x86_cpu_synchronize_from_tb(CPUState *cs, TranslationBlock *tb)
 static Property x86_cpu_properties[] = {
     DEFINE_PROP_BOOL("pmu", X86CPU, enable_pmu, false),
     { .name  = "hv-spinlocks", .info  = &qdev_prop_spinlocks },
+    DEFINE_PROP_BOOL("hv-relaxed", X86CPU, hyperv_relaxed_timing, false),
     DEFINE_PROP_END_OF_LIST()
 };
 
