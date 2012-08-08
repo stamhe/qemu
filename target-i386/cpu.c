@@ -1349,6 +1349,7 @@ static Property cpu_x86_properties[] = {
     DEFINE_PROP_MODEL_ID("model-id"),
     DEFINE_PROP_TSC_FREQ("tsc-frequency"),
     DEFINE_PROP_HV_SPINLOCKS("hv-spinlocks", HYPERV_SPINLOCK_NEVER_RETRY),
+    DEFINE_PROP_BOOL("hv-relaxed", X86CPU, env.hyperv_relaxed_timing, false),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -1489,7 +1490,7 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
         } else if (!strcmp(featurestr, "enforce")) {
             check_cpuid = enforce_cpuid = 1;
         } else if (!strcmp(featurestr, "hv_relaxed")) {
-            env->hyperv_relaxed_timing = true;
+            object_property_parse(OBJECT(cpu), "on", "hv-relaxed", errp);
         } else if (!strcmp(featurestr, "hv_vapic")) {
             env->hyperv_vapic = true;
         } else {
