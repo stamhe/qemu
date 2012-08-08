@@ -297,6 +297,41 @@ PropertyInfo qdev_prop_vendor = {
 #define DEFINE_PROP_VENDOR(_n, _s, _f)                                         \
     DEFINE_PROP(_n, _s, _f, qdev_prop_vendor, uint32_t)
 
+static void x86_get_hv_spinlocks(Object *obj, Visitor *v, void *opaque,
+                                 const char *name, Error **errp)
+{
+    int64_t value = hyperv_get_spinlock_retries();
+
+    visit_type_int(v, &value, name, errp);
+}
+
+static void x86_set_hv_spinlocks(Object *obj, Visitor *v, void *opaque,
+                                 const char *name, Error **errp)
+{
+    int64_t value;
+
+    visit_type_int(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+    if (!value) {
+        error_setg(errp, "Property '%s.%s' doesn't take value '%s'",
+                   object_get_typename(obj), name, "0");
+        return;
+    }
+    hyperv_set_spinlock_retries(value);
+}
+
+PropertyInfo qdev_prop_spinlocks = {
+    .name  = "int",
+    .get   = x86_get_hv_spinlocks,
+    .set   = x86_set_hv_spinlocks,
+};
+#define DEFINE_PROP_HV_SPINLOCKS(_n) {                                         \
+    .name  = _n,                                                               \
+    .info  = &qdev_prop_spinlocks,                                             \
+}
+
 #define FEAT(_name, _field, _bit, _val) \
     DEFINE_PROP_BIT(_name, X86CPU, _field, _bit, _val)
 
@@ -456,6 +491,7 @@ static Property cpu_x86_properties[] = {
     DEFINE_PROP_VENDOR("vendor", X86CPU, env.cpuid_vendor1),
     DEFINE_PROP_UINT32("xlevel", X86CPU, env.cpuid_xlevel, 0),
     DEFINE_PROP_UINT32("level", X86CPU, env.cpuid_level, 0),
+    DEFINE_PROP_HV_SPINLOCKS("hv_spinlocks"),
     DEFINE_PROP_END_OF_LIST(),
  };
 
@@ -1481,13 +1517,7 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features,
                 qstring_append_int(s, tsc_freq);
                 qdict_put(*props, "tsc-frequency", s);
             } else if (!strcmp(featurestr, "hv_spinlocks")) {
-                char *err;
-                numvalue = strtoul(val, &err, 0);
-                if (!*val || *err) {
-                    fprintf(stderr, "bad numerical value %s\n", val);
-                    goto error;
-                }
-                hyperv_set_spinlock_retries(numvalue);
+                qdict_put(*props, featurestr, qstring_from_str(val));
             } else {
                 fprintf(stderr, "unrecognized feature %s\n", featurestr);
                 goto error;
