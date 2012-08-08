@@ -496,6 +496,38 @@ PropertyInfo qdev_prop_tsc_freq = {
 #define DEFINE_PROP_TSC_FREQ(_n)                                               \
     DEFINE_PROP(_n, X86CPU, env.tsc_khz, qdev_prop_tsc_freq, int32_t)
 
+static void x86_get_hv_spinlocks(Object *obj, Visitor *v, void *opaque,
+                                 const char *name, Error **errp)
+{
+    int64_t value = hyperv_get_spinlock_retries();
+
+    visit_type_int(v, &value, name, errp);
+}
+
+static void x86_set_hv_spinlocks(Object *obj, Visitor *v, void *opaque,
+                                 const char *name, Error **errp)
+{
+    int64_t value;
+
+    visit_type_int(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+    hyperv_set_spinlock_retries(value);
+}
+
+PropertyInfo qdev_prop_spinlocks = {
+    .name  = "int",
+    .get   = x86_get_hv_spinlocks,
+    .set   = x86_set_hv_spinlocks,
+};
+#define DEFINE_PROP_HV_SPINLOCKS(_n, _defval) {                                \
+    .name  = _n,                                                               \
+    .info  = &qdev_prop_spinlocks,                                             \
+    .qtype = QTYPE_QINT,                                                       \
+    .defval = _defval                                                          \
+}
+
 static Property cpu_x86_properties[] = {
     DEFINE_PROP_FAMILY("family"),
     DEFINE_PROP_MODEL("model"),
@@ -505,6 +537,7 @@ static Property cpu_x86_properties[] = {
     DEFINE_PROP_VENDOR("vendor"),
     DEFINE_PROP_MODEL_ID("model-id"),
     DEFINE_PROP_TSC_FREQ("tsc-frequency"),
+    DEFINE_PROP_HV_SPINLOCKS("hv-spinlocks", HYPERV_SPINLOCK_NEVER_RETRY),
     DEFINE_PROP_END_OF_LIST(),
  };
 
@@ -1425,13 +1458,7 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
                 snprintf(num, sizeof(num), "%" PRId64, tsc_freq);
                 object_property_parse(OBJECT(cpu), num, "tsc-frequency", errp);
             } else if (!strcmp(featurestr, "hv-spinlocks")) {
-                char *err;
-                numvalue = strtoul(val, &err, 0);
-                if (!*val || *err) {
-                    error_setg(errp, "bad numerical value %s\n", val);
-                    goto out;
-                }
-                hyperv_set_spinlock_retries(numvalue);
+                object_property_parse(OBJECT(cpu), val, featurestr, errp);
             } else {
                 error_setg(errp, "unrecognized feature %s\n", featurestr);
                 goto out;
