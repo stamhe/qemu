@@ -560,6 +560,38 @@ PropertyInfo qdev_prop_hv_relaxed = {
     .defval = _defval                                                          \
 }
 
+static void x86_get_hv_vapic(Object *obj, Visitor *v, void *opaque,
+                                 const char *name, Error **errp)
+{
+    bool value = hyperv_vapic_recommended();
+
+    visit_type_bool(v, &value, name, errp);
+}
+
+static void x86_set_hv_vapic(Object *obj, Visitor *v, void *opaque,
+                                 const char *name, Error **errp)
+{
+    bool value;
+
+    visit_type_bool(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+    hyperv_enable_vapic_recommended(value);
+}
+
+PropertyInfo qdev_prop_hv_vapic = {
+    .name  = "boolean",
+    .get   = x86_get_hv_vapic,
+    .set   = x86_set_hv_vapic,
+};
+#define DEFINE_PROP_HV_VAPIC(_n, _defval) {                                    \
+    .name  = _n,                                                               \
+    .info  = &qdev_prop_hv_vapic,                                              \
+    .qtype = QTYPE_QBOOL,                                                      \
+    .defval = _defval                                                          \
+}
+
 static Property cpu_x86_properties[] = {
     DEFINE_PROP_FAMILY("family"),
     DEFINE_PROP_MODEL("model"),
@@ -571,6 +603,7 @@ static Property cpu_x86_properties[] = {
     DEFINE_PROP_TSC_FREQ("tsc-frequency"),
     DEFINE_PROP_HV_SPINLOCKS("hv-spinlocks", HYPERV_SPINLOCK_NEVER_RETRY),
     DEFINE_PROP_HV_RELAXED("hv-relaxed", false),
+    DEFINE_PROP_HV_VAPIC("hv-vapic", false),
     DEFINE_PROP_END_OF_LIST(),
  };
 
@@ -1503,7 +1536,7 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
         } else if (!strcmp(featurestr, "hv_relaxed")) {
             object_property_parse(OBJECT(cpu), "on", "hv-relaxed", errp);
         } else if (!strcmp(featurestr, "hv_vapic")) {
-            hyperv_enable_vapic_recommended(true);
+            object_property_parse(OBJECT(cpu), "on", "hv-vapic", errp);
         } else {
             error_setg(errp, "feature string `%s' not in format (+feature|"
                        "-feature|feature=xyz)\n", featurestr);
