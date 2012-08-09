@@ -307,6 +307,8 @@ static Property cpu_x86_properties[] = {
     FEAT("f-rdseed", env.cpuid_7_0_ebx_features, 18, false),
     FEAT("f-adx", env.cpuid_7_0_ebx_features, 19, false),
     FEAT("f-smap", env.cpuid_7_0_ebx_features, 20, false),
+    DEFINE_PROP_BOOL("vendor-override", X86CPU, env.cpuid_vendor_override,
+                     false),
     DEFINE_PROP_END_OF_LIST(),
  };
 
@@ -452,7 +454,7 @@ typedef struct x86_def_t {
     uint32_t kvm_features, svm_features;
     uint32_t xlevel;
     char model_id[48];
-    int vendor_override;
+    bool vendor_override;
     /* Store the results of Centaur's CPUID instructions */
     uint32_t ext4_features;
     uint32_t xlevel2;
@@ -1073,7 +1075,7 @@ static void kvm_cpu_fill_host(x86_def_t *x86_cpu_def)
                 kvm_arch_get_supported_cpuid(s, 0x80000001, 0, R_ECX);
 
     cpu_x86_fill_model_id(x86_cpu_def->model_id);
-    x86_cpu_def->vendor_override = 0;
+    x86_cpu_def->vendor_override = false;
 
     /* Call Centaur's CPUID instruction. */
     if (x86_cpu_def->vendor1 == CPUID_VENDOR_VIA_1 &&
@@ -1331,7 +1333,6 @@ static void x86_cpuid_set_vendor(Object *obj, const char *value,
         env->cpuid_vendor2 |= ((uint8_t)value[i + 4]) << (8 * i);
         env->cpuid_vendor3 |= ((uint8_t)value[i + 8]) << (8 * i);
     }
-    env->cpuid_vendor_override = 1;
 }
 
 static char *x86_cpuid_get_model_id(Object *obj, Error **errp)
@@ -1410,7 +1411,8 @@ static void cpudef_2_x86_cpu(X86CPU *cpu, x86_def_t *def, Error **errp)
     env->cpuid_vendor1 = def->vendor1;
     env->cpuid_vendor2 = def->vendor2;
     env->cpuid_vendor3 = def->vendor3;
-    env->cpuid_vendor_override = def->vendor_override;
+    object_property_set_bool(OBJECT(cpu), def->vendor_override,
+                             "vendor-override", errp);
     object_property_set_int(OBJECT(cpu), def->level, "level", errp);
     object_property_set_int(OBJECT(cpu), def->family, "family", errp);
     object_property_set_int(OBJECT(cpu), def->model, "model", errp);
@@ -1539,7 +1541,7 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features)
                     x86_cpu_def->vendor2 |= ((uint8_t)val[i + 4]) << (8 * i);
                     x86_cpu_def->vendor3 |= ((uint8_t)val[i + 8]) << (8 * i);
                 }
-                x86_cpu_def->vendor_override = 1;
+                x86_cpu_def->vendor_override = true;
             } else if (!strcmp(featurestr, "model_id")) {
                 pstrcpy(x86_cpu_def->model_id, sizeof(x86_cpu_def->model_id),
                         val);
