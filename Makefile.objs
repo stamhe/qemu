@@ -14,6 +14,7 @@ universal-obj-y += $(qobject-obj-y)
 #######################################################################
 # QOM
 qom-obj-y = qom/
+qom-obj-y += qemu-option.o
 
 universal-obj-y += $(qom-obj-y)
 
