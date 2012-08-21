@@ -14,7 +14,6 @@
 
 #include "compiler.h"
 #include "qapi-types.h"
-#include <stdbool.h>
 
 /**
  * A class representing internal errors within QEMU.  An error has a ErrorClass
