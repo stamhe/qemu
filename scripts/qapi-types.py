@@ -263,7 +263,7 @@ fdecl.write(mcgen('''
 #ifndef %(guard)s
 #define %(guard)s
 
-#include "qemu-common.h"
+#include <stdbool.h>
 
 ''',
                   guard=guardname(h_file)))
