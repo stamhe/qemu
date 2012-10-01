@@ -1344,15 +1344,15 @@ static void cpudef_2_x86_cpu(X86CPU *cpu, x86_def_t *def, Error **errp)
 static void compat_normalize_cpu_model(const char *cpu_model, char **cpu_name,
                                         QDict **features, Error **errp)
 {
-
-    char *s = g_strdup(cpu_model);
-    char *featurestr, *sptr = NULL;
-
-    *cpu_name = strtok_r(s, ",", &sptr);
+    int i;
+    gchar **feat_array = g_strsplit(cpu_model, ",", 0);
     *features = qdict_new();
 
-    featurestr = strtok_r(NULL, ",", &sptr);
-    while (featurestr) {
+    g_assert(feat_array[0] != NULL);
+    *cpu_name = g_strdup(feat_array[0]);
+
+    for (i = 1; feat_array[i]; ++i) {
+        gchar *featurestr = feat_array[i];
         char *val;
         if (featurestr[0] == '+') {
             /*
@@ -1382,10 +1382,9 @@ static void compat_normalize_cpu_model(const char *cpu_model, char **cpu_name,
                 qdict_put(*features, featurestr, qstring_from_str("on"));
             }
         }
-
-        featurestr = strtok_r(NULL, ",", &sptr);
     }
 
+    g_strfreev(feat_array);
     return;
 }
 
