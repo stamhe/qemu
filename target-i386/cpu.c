@@ -1603,9 +1603,6 @@ static int cpu_x86_find_by_name(x86_def_t *x86_cpu_def, const char *cpu_model)
         if (kvm_check_features_against_host(x86_cpu_def) && enforce_cpuid)
             goto error;
     }
-    if (x86_cpu_def->cpuid_7_0_ebx_features && x86_cpu_def->level < 7) {
-        x86_cpu_def->level = 7;
-    }
     g_free(s);
     return 0;
 
@@ -2231,6 +2228,10 @@ void x86_cpu_realize(Object *obj, Error **errp)
 {
     X86CPU *cpu = X86_CPU(obj);
     CPUX86State *env = &cpu->env;
+
+    if (env->cpuid_7_0_ebx_features && env->cpuid_level < 7) {
+        env->cpuid_level = 7;
+    }
 
     if (!kvm_enabled()) {
         env->cpuid_features &= TCG_FEATURES;
