@@ -281,7 +281,7 @@ static Property cpu_x86_properties[] = {
     FEAT("f-avx", env.cpuid_ext_features, 28, false),
     FEAT("f-f16c", env.cpuid_ext_features, 29, false),
     FEAT("f-rdrand", env.cpuid_ext_features, 30, false),
-    FEAT("f-hypervisor", env.cpuid_ext_features, 31, false),
+    FEAT("f-hypervisor", env.cpuid_ext_features, 31, true),
     FEAT("f-syscall", env.cpuid_ext2_features, 11, false),
     FEAT("f-nx", env.cpuid_ext2_features, 20, false),
     FEAT("f-xd", env.cpuid_ext2_features, 20, false),
@@ -1713,7 +1713,7 @@ int cpu_x86_register(X86CPU *cpu, const char *cpu_model)
     }
 
     def->kvm_features |= kvm_default_features;
-    def->ext_features |= CPUID_EXT_HYPERVISOR;
+    def->ext_features |= cpu->env.cpuid_ext_features & CPUID_EXT_HYPERVISOR;
 
     if (cpu_x86_parse_featurestr(def, features, &props) < 0) {
         error_setg(&error, "Invalid cpu_model string format: %s", cpu_model);
