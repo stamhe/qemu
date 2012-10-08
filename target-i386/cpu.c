@@ -174,7 +174,7 @@ static Property cpu_x86_properties[] = {
     DEFINE_PROP_BIT("f-xsave", X86CPU, env.cpuid_ext_features, 26, false),
     DEFINE_PROP_BIT("f-osxsave", X86CPU, env.cpuid_ext_features, 27, false),
     DEFINE_PROP_BIT("f-avx", X86CPU, env.cpuid_ext_features, 28, false),
-    DEFINE_PROP_BIT("f-hypervisor", X86CPU, env.cpuid_ext_features, 31, false),
+    DEFINE_PROP_BIT("f-hypervisor", X86CPU, env.cpuid_ext_features, 31, true),
     DEFINE_PROP_BIT("f-syscall", X86CPU, env.cpuid_ext2_features, 11, false),
     DEFINE_PROP_BIT("f-nx", X86CPU, env.cpuid_ext2_features, 20, false),
     DEFINE_PROP_BIT("f-xd", X86CPU, env.cpuid_ext2_features, 20, false),
@@ -1307,11 +1307,12 @@ static int cpu_x86_find_by_name(X86CPU *cpu, x86_def_t *x86_cpu_def,
 {
     unsigned int i;
     x86_def_t *def;
+    CPUX86State *env = &cpu->env;
 
     char *s = g_strdup(cpu_model);
     char *featurestr, *name = strtok(s, ",");
     /* Features to be added*/
-    uint32_t plus_features = 0, plus_ext_features = 0;
+    uint32_t plus_features = 0, plus_ext_features = env->cpuid_ext_features;
     uint32_t plus_ext2_features = 0, plus_ext3_features = 0;
     uint32_t plus_kvm_features = 0, plus_svm_features = 0;
     uint32_t plus_7_0_ebx_features = 0;
@@ -1344,10 +1345,6 @@ static int cpu_x86_find_by_name(X86CPU *cpu, x86_def_t *x86_cpu_def,
 #else
     plus_kvm_features = 0;
 #endif
-
-    add_flagname_to_bitmaps("hypervisor", &plus_features,
-            &plus_ext_features, &plus_ext2_features, &plus_ext3_features,
-            &plus_kvm_features, &plus_svm_features,  &plus_7_0_ebx_features);
 
     featurestr = strtok(NULL, ",");
 
