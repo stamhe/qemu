@@ -656,6 +656,65 @@ PropertyInfo qdev_prop_enforce = {
     .defval = _defval                                                          \
 }
 
+static void x86_cpu_get_kvmclock(Object *obj, Visitor *v, void *opaque,
+                                 const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    bool value = cpu->env.cpuid_kvm_features;
+    value = (value & KVM_FEATURE_CLOCKSOURCE) &&
+            (value & KVM_FEATURE_CLOCKSOURCE2);
+    visit_type_bool(v, &value, name, errp);
+}
+
+static void x86_cpu_set_kvmclock(Object *obj, Visitor *v, void *opaque,
+                                 const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    bool value;
+    visit_type_bool(v, &value, name, errp);
+    if (value == true) {
+        cpu->env.cpuid_kvm_features |= KVM_FEATURE_CLOCKSOURCE |
+                                      KVM_FEATURE_CLOCKSOURCE2;
+    } else {
+        cpu->env.cpuid_kvm_features &= ~(KVM_FEATURE_CLOCKSOURCE |
+                                       KVM_FEATURE_CLOCKSOURCE2);
+    }
+}
+
+PropertyInfo qdev_prop_kvmclock = {
+    .name  = "boolean",
+    .get   = x86_cpu_get_kvmclock,
+    .set   = x86_cpu_set_kvmclock,
+};
+#define DEFINE_PROP_KVMCLOCK(_n) {                                             \
+    .name  = _n,                                                               \
+    .info  = &qdev_prop_kvmclock                                               \
+}
+
+#define F_1_EDX(_name, _bit, _defval) \
+    DEFINE_PROP_BIT(_name, X86CPU, env.cpuid_features, _bit, _defval)
+
+#define F_1_ECX(_name, _bit, _defval) \
+    DEFINE_PROP_BIT(_name, X86CPU, env.cpuid_ext_features, _bit, _defval)
+
+#define F_8000_0001_EDX(_name, _bit, _defval) \
+    DEFINE_PROP_BIT(_name, X86CPU, env.cpuid_ext2_features, _bit, _defval)
+
+#define F_8000_0001_ECX(_name, _bit, _defval) \
+    DEFINE_PROP_BIT(_name, X86CPU, env.cpuid_ext3_features, _bit, _defval)
+
+#define F_C000_0001_EDX(_name, _bit, _defval) \
+    DEFINE_PROP_BIT(_name, X86CPU, env.cpuid_ext4_features, _bit, _defval)
+
+#define F_KVM(_name, _bit, _defval) \
+    DEFINE_PROP_BIT(_name, X86CPU, env.cpuid_kvm_features, _bit, _defval)
+
+#define F_SVM(_name, _bit, _defval) \
+    DEFINE_PROP_BIT(_name, X86CPU, env.cpuid_svm_features, _bit, _defval)
+
+#define F_7_0_EBX(_name, _bit, _defval) \
+    DEFINE_PROP_BIT(_name, X86CPU, env.cpuid_7_0_ebx_features, _bit, _defval)
+
 static Property cpu_x86_properties[] = {
     DEFINE_PROP_FAMILY("family"),
     DEFINE_PROP_MODEL("model"),
@@ -670,6 +729,156 @@ static Property cpu_x86_properties[] = {
     DEFINE_PROP_HV_VAPIC("hv-vapic", false),
     DEFINE_PROP_CHECK("check", false),
     DEFINE_PROP_ENFORCE("enforce", false),
+    F_1_EDX("f-fpu",     0, false),
+    F_1_EDX("f-vme",     1, false),
+    F_1_EDX("f-de",      2, false),
+    F_1_EDX("f-pse",     3, false),
+    F_1_EDX("f-tsc",     4, false),
+    F_1_EDX("f-msr",     5, false),
+    F_1_EDX("f-pae",     6, false),
+    F_1_EDX("f-mce",     7, false),
+    F_1_EDX("f-cx8",     8, false),
+    F_1_EDX("f-apic",    9, false),
+    F_1_EDX("f-sep",     11, false),
+    F_1_EDX("f-mtrr",    12, false),
+    F_1_EDX("f-pge",     13, false),
+    F_1_EDX("f-mca",     14, false),
+    F_1_EDX("f-cmov",    15, false),
+    F_1_EDX("f-pat",     16, false),
+    F_1_EDX("f-pse36",   17, false),
+    /* Intel psn */
+    F_1_EDX("f-pn",      18, false),
+    /* Intel clfsh */
+    F_1_EDX("f-clflush", 19, false),
+    /* Intel dts */
+    F_1_EDX("f-ds",      21, false),
+    F_1_EDX("f-acpi",    22, false),
+    F_1_EDX("f-mmx",     23, false),
+    F_1_EDX("f-fxsr",    24, false),
+    F_1_EDX("f-sse",     25, false),
+    F_1_EDX("f-sse2",    26, false),
+    F_1_EDX("f-ss",      27, false),
+    /* Intel htt */
+    F_1_EDX("f-ht",      28, false),
+    F_1_EDX("f-tm",      29, false),
+    F_1_EDX("f-ia64",    30, false),
+    F_1_EDX("f-pbe",     31, false),
+    /* Intel */
+    F_1_ECX("f-pni",          0, false),
+    /* AMD sse3 */
+    F_1_ECX("f-sse3",         0, false),
+    F_1_ECX("f-pclmulqdq",    1, false),
+    F_1_ECX("f-pclmuldq",     1, false),
+    F_1_ECX("f-dtes64",       2, false),
+    F_1_ECX("f-monitor",      3, false),
+    F_1_ECX("f-ds-cpl",       4, false),
+    F_1_ECX("f-vmx",          5, false),
+    F_1_ECX("f-smx",          6, false),
+    F_1_ECX("f-est",          7, false),
+    F_1_ECX("f-tm2",          8, false),
+    F_1_ECX("f-ssse3",        9, false),
+    F_1_ECX("f-cid",          10, false),
+    F_1_ECX("f-fma",          12, false),
+    F_1_ECX("f-cx16",         13, false),
+    F_1_ECX("f-xtpr",         14, false),
+    F_1_ECX("f-pdcm",         15, false),
+    F_1_ECX("f-pcid",         17, false),
+    F_1_ECX("f-dca",          18, false),
+    F_1_ECX("f-sse4.1",       19, false),
+    F_1_ECX("f-sse4.2",       20, false),
+    F_1_ECX("f-sse4-1",       19, false),
+    F_1_ECX("f-sse4-2",       20, false),
+    F_1_ECX("f-x2apic",       21, false),
+    F_1_ECX("f-movbe",        22, false),
+    F_1_ECX("f-popcnt",       23, false),
+    F_1_ECX("f-tsc-deadline", 24, false),
+    F_1_ECX("f-aes",          25, false),
+    F_1_ECX("f-xsave",        26, false),
+    F_1_ECX("f-osxsave",      27, false),
+    F_1_ECX("f-avx",          28, false),
+    F_1_ECX("f-f16c",         29, false),
+    F_1_ECX("f-rdrand",       30, false),
+    F_1_ECX("f-hypervisor",   31, false),
+    F_8000_0001_EDX("f-syscall",  11, false),
+    F_8000_0001_EDX("f-nx",       20, false),
+    F_8000_0001_EDX("f-xd",       20, false),
+    F_8000_0001_EDX("f-mmxext",   22, false),
+    F_8000_0001_EDX("f-fxsr-opt", 25, false),
+    F_8000_0001_EDX("f-ffxsr",    25, false),
+    /* AMD Page1GB */
+    F_8000_0001_EDX("f-pdpe1gb",  26, false),
+    F_8000_0001_EDX("f-rdtscp",   27, false),
+    F_8000_0001_EDX("f-lm",       29, false),
+    F_8000_0001_EDX("f-i64",      29, false),
+    F_8000_0001_EDX("f-3dnowext", 30, false),
+    F_8000_0001_EDX("f-3dnow",    31, false),
+    /* AMD LahfSahf */
+    F_8000_0001_ECX("f-lahf-lm",       0, false),
+    F_8000_0001_ECX("f-cmp-legacy",    1, false),
+    F_8000_0001_ECX("f-svm",           2, false),
+    /* AMD ExtApicSpace */
+    F_8000_0001_ECX("f-extapic",       3, false),
+    /* AMD AltMovCr8 */
+    F_8000_0001_ECX("f-cr8legacy",     4, false),
+    F_8000_0001_ECX("f-abm",           5, false),
+    F_8000_0001_ECX("f-sse4a",         6, false),
+    F_8000_0001_ECX("f-misalignsse",   7, false),
+    F_8000_0001_ECX("f-3dnowprefetch", 8, false),
+    F_8000_0001_ECX("f-osvw",          9, false),
+    F_8000_0001_ECX("f-ibs",           10, false),
+    F_8000_0001_ECX("f-xop",           11, false),
+    F_8000_0001_ECX("f-skinit",        12, false),
+    F_8000_0001_ECX("f-wdt",           13, false),
+    F_8000_0001_ECX("f-lwp",           15, false),
+    F_8000_0001_ECX("f-fma4",          16, false),
+    F_8000_0001_ECX("f-tce",           17, false),
+    F_8000_0001_ECX("f-cvt16",         18, false),
+    F_8000_0001_ECX("f-nodeid-msr",    19, false),
+    F_8000_0001_ECX("f-tbm",           21, false),
+    F_8000_0001_ECX("f-topoext",       22, false),
+    F_8000_0001_ECX("f-perfctr-core",  23, false),
+    F_8000_0001_ECX("f-perfctr-nb",    24, false),
+    F_C000_0001_EDX("f-xstore",    2, false),
+    F_C000_0001_EDX("f-xstore-en", 3, false),
+    F_C000_0001_EDX("f-xcrypt",    6, false),
+    F_C000_0001_EDX("f-xcrypt-en", 7, false),
+    F_C000_0001_EDX("f-ace2",      8, false),
+    F_C000_0001_EDX("f-ace2-en",   9, false),
+    F_C000_0001_EDX("f-phe",      10, false),
+    F_C000_0001_EDX("f-phe-en",   11, false),
+    F_C000_0001_EDX("f-pmm",      12, false),
+    F_C000_0001_EDX("f-pmm-en",   13, false),
+    DEFINE_PROP_KVMCLOCK("f-kvmclock"),
+    F_KVM("f-kvmclock1",       0, false),
+    F_KVM("f-kvm-nopiodelay",  1, false),
+    F_KVM("f-kvm-mmu",         2, false),
+    F_KVM("f-kvmclock2",       3, false),
+    F_KVM("f-kvm-asyncpf",     4, false),
+    F_KVM("f-kvm-steal-tm",    5, false),
+    F_KVM("f-kvm-pv-eoi",      6, false),
+    F_KVM("f-kvmclock-stable", 24, false),
+    F_SVM("f-npt",           0, false),
+    F_SVM("f-lbrv",          1, false),
+    F_SVM("f-svm-lock",      2, false),
+    F_SVM("f-nrip-save",     3, false),
+    F_SVM("f-tsc-scale",     4, false),
+    F_SVM("f-vmcb-clean",    5, false),
+    F_SVM("f-flushbyasid",   6, false),
+    F_SVM("f-decodeassists", 7, false),
+    F_SVM("f-pause-filter",  10, false),
+    F_SVM("f-pfthreshold",   12, false),
+    F_7_0_EBX("f-fsgsbase",  0, false),
+    F_7_0_EBX("f-bmi1",    3, false),
+    F_7_0_EBX("f-hle",     4, false),
+    F_7_0_EBX("f-avx2",    5, false),
+    F_7_0_EBX("f-smep",    7, false),
+    F_7_0_EBX("f-bmi2",    8, false),
+    F_7_0_EBX("f-erms",    9, false),
+    F_7_0_EBX("f-invpcid", 10, false),
+    F_7_0_EBX("f-rtm",     11, false),
+    F_7_0_EBX("f-rdseed",  18, false),
+    F_7_0_EBX("f-adx",     19, false),
+    F_7_0_EBX("f-smap",    20, false),
     DEFINE_PROP_END_OF_LIST(),
  };
 
@@ -726,85 +935,6 @@ void host_cpuid(uint32_t function, uint32_t count,
     if (edx)
         *edx = vec[3];
 #endif
-}
-
-#define iswhite(c) ((c) && ((c) <= ' ' || '~' < (c)))
-
-/* general substring compare of *[s1..e1) and *[s2..e2).  sx is start of
- * a substring.  ex if !NULL points to the first char after a substring,
- * otherwise the string is assumed to sized by a terminating nul.
- * Return lexical ordering of *s1:*s2.
- */
-static int sstrcmp(const char *s1, const char *e1, const char *s2,
-    const char *e2)
-{
-    for (;;) {
-        if (!*s1 || !*s2 || *s1 != *s2)
-            return (*s1 - *s2);
-        ++s1, ++s2;
-        if (s1 == e1 && s2 == e2)
-            return (0);
-        else if (s1 == e1)
-            return (*s2);
-        else if (s2 == e2)
-            return (*s1);
-    }
-}
-
-/* compare *[s..e) to *altstr.  *altstr may be a simple string or multiple
- * '|' delimited (possibly empty) strings in which case search for a match
- * within the alternatives proceeds left to right.  Return 0 for success,
- * non-zero otherwise.
- */
-static int altcmp(const char *s, const char *e, const char *altstr)
-{
-    const char *p, *q;
-
-    for (q = p = altstr; ; ) {
-        while (*p && *p != '|')
-            ++p;
-        if ((q == p && !*s) || (q != p && !sstrcmp(s, e, q, p)))
-            return (0);
-        if (!*p)
-            return (1);
-        else
-            q = ++p;
-    }
-}
-
-/* search featureset for flag *[s..e), if found set corresponding bit in
- * *pval and return true, otherwise return false
- */
-static bool lookup_feature(uint32_t *pval, const char *s, const char *e,
-                           const char **featureset)
-{
-    uint32_t mask;
-    const char **ppc;
-    bool found = false;
-
-    for (mask = 1, ppc = featureset; mask; mask <<= 1, ++ppc) {
-        if (*ppc && !altcmp(s, e, *ppc)) {
-            *pval |= mask;
-            found = true;
-        }
-    }
-    return found;
-}
-
-static void add_flagname_to_bitmaps(const char *flagname,
-                                    FeatureWordArray words)
-{
-    FeatureWord w;
-    for (w = 0; w < FEATURE_WORDS; w++) {
-        FeatureWordInfo *wi = &feature_word_info[w];
-        if (wi->feat_names &&
-            lookup_feature(&words[w], flagname, NULL, wi->feat_names)) {
-            break;
-        }
-    }
-    if (w == FEATURE_WORDS) {
-        fprintf(stderr, "CPU feature %s not found\n", flagname);
-    }
 }
 
 typedef struct x86_def_t {
@@ -1527,23 +1657,35 @@ static inline void feat2prop(char *s)
 static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
 {
     char *featurestr; /* Single 'key=value" string being parsed */
-    /* Features to be added */
-    FeatureWordArray plus_features = { 0 };
-    /* Features to be removed */
-    FeatureWordArray minus_features = { 0 };
     uint32_t numvalue;
-    CPUX86State *env = &cpu->env;
+    QDict *props = qdict_new();
+    const QDictEntry *ent;
 
     featurestr = features ? strtok(features, ",") : NULL;
 
     while (featurestr) {
         char *val;
-        if (featurestr[0] == '+') {
-            add_flagname_to_bitmaps(featurestr + 1, plus_features);
-        } else if (featurestr[0] == '-') {
-            add_flagname_to_bitmaps(featurestr + 1, minus_features);
+        feat2prop(featurestr);
+        if (featurestr[0] == '+' || featurestr[0] == '-') {
+            const gchar *feat = featurestr + 1;
+            gchar *cpuid_fname = NULL;
+
+            if (strncmp(feat, "f-", 2)) {
+                cpuid_fname = g_strconcat("f-", feat, NULL);
+                feat = cpuid_fname;
+            }
+
+            if (featurestr[0] == '+') {
+                /* preseve legacy behaviour, if feature was disabled once
+                 * do not allow to enable it again */
+                if (!qdict_haskey(props, feat)) {
+                    qdict_put(props, feat, qstring_from_str("on"));
+                }
+            } else {
+                qdict_put(props, feat, qstring_from_str("off"));
+            }
+            g_free(cpuid_fname);
         } else if ((val = strchr(featurestr, '='))) {
-            feat2prop(featurestr);
             *val = 0; val++;
             if (!strcmp(featurestr, "xlevel")) {
                 char *err;
@@ -1578,7 +1720,6 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
                 object_property_parse(OBJECT(cpu), val, featurestr, errp);
             }
         } else {
-            feat2prop(featurestr);
             object_property_parse(OBJECT(cpu), "on", featurestr, errp);
         }
         if (error_is_set(errp)) {
@@ -1586,24 +1727,19 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
         }
         featurestr = strtok(NULL, ",");
     }
-    env->cpuid_features |= plus_features[FEAT_1_EDX];
-    env->cpuid_ext_features |= plus_features[FEAT_1_ECX];
-    env->cpuid_ext2_features |= plus_features[FEAT_8000_0001_EDX];
-    env->cpuid_ext3_features |= plus_features[FEAT_8000_0001_ECX];
-    env->cpuid_ext4_features |= plus_features[FEAT_C000_0001_EDX];
-    env->cpuid_kvm_features |= plus_features[FEAT_KVM];
-    env->cpuid_svm_features |= plus_features[FEAT_SVM];
-    env->cpuid_7_0_ebx_features |= plus_features[FEAT_7_0_EBX];
-    env->cpuid_features &= ~minus_features[FEAT_1_EDX];
-    env->cpuid_ext_features &= ~minus_features[FEAT_1_ECX];
-    env->cpuid_ext2_features &= ~minus_features[FEAT_8000_0001_EDX];
-    env->cpuid_ext3_features &= ~minus_features[FEAT_8000_0001_ECX];
-    env->cpuid_ext4_features &= ~minus_features[FEAT_C000_0001_EDX];
-    env->cpuid_kvm_features &= ~minus_features[FEAT_KVM];
-    env->cpuid_svm_features &= ~minus_features[FEAT_SVM];
-    env->cpuid_7_0_ebx_features &= ~minus_features[FEAT_7_0_EBX];
+
+    for (ent = qdict_first(props); ent; ent = qdict_next(props, ent)) {
+        const QString *qval = qobject_to_qstring(qdict_entry_value(ent));
+        /* TODO: switch to using global properties after subclasses are done */
+        object_property_parse(OBJECT(cpu), qstring_get_str(qval),
+                              qdict_entry_key(ent), errp);
+        if (error_is_set(errp)) {
+            return;
+        }
+    }
 
 out:
+    QDECREF(props);
     return;
 }
 
