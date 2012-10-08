@@ -1442,11 +1442,12 @@ static int cpu_x86_find_by_name(x86_def_t *x86_cpu_def, const char *cpu_model)
 {
     unsigned int i;
     x86_def_t *def;
+    CPUX86State *env = &cpu->env;
 
     char *s = g_strdup(cpu_model);
     char *featurestr, *name = strtok(s, ",");
     /* Features to be added*/
-    uint32_t plus_features = 0, plus_ext_features = 0;
+    uint32_t plus_features = 0, plus_ext_features = env->cpuid_ext_features;
     uint32_t plus_ext2_features = 0, plus_ext3_features = 0;
     uint32_t plus_kvm_features = kvm_default_features, plus_svm_features = 0;
     uint32_t plus_7_0_ebx_features = 0;
@@ -1467,10 +1468,6 @@ static int cpu_x86_find_by_name(x86_def_t *x86_cpu_def, const char *cpu_model)
     } else {
         memcpy(x86_cpu_def, def, sizeof(*def));
     }
-
-    add_flagname_to_bitmaps("hypervisor", &plus_features,
-            &plus_ext_features, &plus_ext2_features, &plus_ext3_features,
-            &plus_kvm_features, &plus_svm_features,  &plus_7_0_ebx_features);
 
     featurestr = strtok(NULL, ",");
 
