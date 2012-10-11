@@ -996,24 +996,6 @@ static void kvm_cpu_fill_host(x86_def_t *x86_cpu_def)
 #endif /* CONFIG_KVM */
 }
 
-static int unavailable_host_feature(FeatureWordInfo *f, uint32_t mask)
-{
-    int i;
-
-    for (i = 0; i < 32; ++i)
-        if (1 << i & mask) {
-            const char *reg = get_register_name_32(f->cpuid_reg);
-            assert(reg);
-            fprintf(stderr, "warning: host doesn't support requested feature: "
-                "CPUID.%02XH:%s%s%s [bit %d]\n",
-                f->cpuid_eax, reg,
-                f->feat_names[i] ? "." : "",
-                f->feat_names[i] ? f->feat_names[i] : "", i);
-            break;
-        }
-    return 0;
-}
-
 /* Check if all requested cpu flags are making their way to the guest
  *
  * Returns 0 if all flags are supported by the host, non-zero otherwise.
@@ -1052,6 +1034,7 @@ static int kvm_check_features_against_host(X86CPU *cpu)
             &host_def.features[FEAT_KVM],
             FEAT_KVM },
     };
+    const DeviceClass *dc = DEVICE_CLASS(object_get_class(OBJECT(cpu)));
 
     assert(kvm_enabled());
 
@@ -1059,10 +1042,22 @@ static int kvm_check_features_against_host(X86CPU *cpu)
     for (rv = 0, i = 0; i < ARRAY_SIZE(ft); ++i) {
         FeatureWord w = ft[i].feat_word;
         FeatureWordInfo *wi = &feature_word_info[w];
+        int offset = (char *)&((X86CPU *)0)->env.features[w] - (char *)0;
         for (mask = 1; mask; mask <<= 1) {
             if (*ft[i].guest_feat & mask &&
                 !(*ft[i].host_feat & mask)) {
-                unavailable_host_feature(wi, mask);
+                int bitnr = ffsl(mask) - 1;
+                const Property *prop = qdev_prop_find_bit(dc, offset, bitnr);
+                const char *name = prop ? prop->name : NULL;
+                const char *reg = get_register_name_32(wi->cpuid_reg);
+
+                assert(reg);
+                fprintf(stderr, "warning: host doesn't support requested"
+                        "feature: CPUID.%02XH:%s%s%s [bit %d]\n",
+                         wi->cpuid_eax,
+                         reg, name ? "." : "",
+                         name ? name : "",
+                         bitnr);
                 rv = 1;
             }
         }
