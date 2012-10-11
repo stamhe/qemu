@@ -129,6 +129,8 @@ void error_set_from_qdev_prop_error(Error **errp, int ret, DeviceState *dev,
 void qdev_property_add_static(DeviceState *dev, Property *prop, Error **errp);
 
 Property *qdev_prop_find(DeviceClass *dc, const char *name);
+const Property *qdev_prop_find_bit(const DeviceClass *dc, const int offset,
+                                   const uint8_t bitnr);
 
 #define QDEV_PROP_FOREACH(_var, _class)                                       \
     for ((_var) = DEVICE_CLASS((_class))->props;                              \
@@ -139,4 +141,10 @@ Property *qdev_prop_find(DeviceClass *dc, const char *name);
     for ((_var) = (_class);                                                   \
          (_var) != DEVICE_CLASS(object_class_by_name(TYPE_DEVICE));           \
          (_var) = DEVICE_CLASS(object_class_get_parent(OBJECT_CLASS((_var)))))
+
+#define QDEV_FIND_PROP_FROM_BIT(_class, _state, _field, _bitnr)               \
+    qdev_prop_find_bit(_class,                                                \
+                       offsetof(_state, _field) +                             \
+                       type_check(uint32_t, typeof_field(_state, _field)),    \
+                       _bitnr)
 #endif
