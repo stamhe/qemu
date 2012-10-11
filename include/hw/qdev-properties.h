@@ -192,4 +192,17 @@ void qdev_property_add_static(DeviceState *dev, Property *prop, Error **errp);
  */
 void qdev_prop_set_after_realize(DeviceState *dev, const char *name,
                                  Error **errp);
+
+#define QDEV_PROP_FOREACH(_var, _class)                                       \
+    for ((_var) = DEVICE_CLASS((_class))->props;                              \
+         (_var) && (_var)->name;                                              \
+         (_var)++)
+
+#define QDEV_CLASS_FOREACH(_var, _class)                                      \
+    for ((_var) = (_class);                                                   \
+         (_var) != DEVICE_CLASS(object_class_by_name(TYPE_DEVICE));           \
+         (_var) = DEVICE_CLASS(object_class_get_parent(OBJECT_CLASS((_var)))))
+
+const Property *qdev_prop_find_bit(const DeviceClass *dc, const int offset,
+                                   const uint8_t bitnr);
 #endif
