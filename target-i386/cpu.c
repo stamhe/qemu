@@ -41,6 +41,7 @@
 #endif
 
 #include "sysemu/sysemu.h"
+#include "hw/qdev-properties.h"
 #ifndef CONFIG_USER_ONLY
 #include "hw/xen.h"
 #include "hw/sysbus.h"
@@ -208,6 +209,304 @@ const char *get_register_name_32(unsigned int reg)
     }
     return reg_names[reg];
 }
+
+static void x86_cpuid_version_get_family(Object *obj, Visitor *v, void *opaque,
+                                         const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+    int64_t value;
+
+    value = (env->cpuid_version >> 8) & 0xf;
+    if (value == 0xf) {
+        value += (env->cpuid_version >> 20) & 0xff;
+    }
+    visit_type_int(v, &value, name, errp);
+}
+
+static void x86_cpuid_version_set_family(Object *obj, Visitor *v, void *opaque,
+                                         const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+    const int64_t min = 0;
+    const int64_t max = 0xff + 0xf;
+    int64_t value;
+
+    visit_type_int(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+    if (value < min || value > max) {
+        error_setg(errp, "Property %s.%s doesn't take value %" PRId64 " (min"
+                  "imum: %" PRId64 ", maximum: %" PRId64,
+                  object_get_typename(obj), name, value, min, max);
+        return;
+    }
+
+    env->cpuid_version &= ~0xff00f00;
+    if (value > 0x0f) {
+        env->cpuid_version |= 0xf00 | ((value - 0x0f) << 20);
+    } else {
+        env->cpuid_version |= value << 8;
+    }
+}
+
+PropertyInfo qdev_prop_family = {
+    .name  = "uint32",
+    .get   = x86_cpuid_version_get_family,
+    .set   = x86_cpuid_version_set_family,
+};
+#define DEFINE_PROP_FAMILY(_n)                                                 \
+    DEFINE_PROP(_n, X86CPU, env.cpuid_version, qdev_prop_family, uint32_t)
+
+static void x86_cpuid_version_get_model(Object *obj, Visitor *v, void *opaque,
+                                        const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+    int64_t value;
+
+    value = (env->cpuid_version >> 4) & 0xf;
+    value |= ((env->cpuid_version >> 16) & 0xf) << 4;
+    visit_type_int(v, &value, name, errp);
+}
+
+static void x86_cpuid_version_set_model(Object *obj, Visitor *v, void *opaque,
+                                        const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+    const int64_t min = 0;
+    const int64_t max = 0xff;
+    int64_t value;
+
+    visit_type_int(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+    if (value < min || value > max) {
+        error_setg(errp, "Property %s.%s doesn't take value %" PRId64 " (min"
+                  "imum: %" PRId64 ", maximum: %" PRId64,
+                  object_get_typename(obj), name, value, min, max);
+        return;
+    }
+
+    env->cpuid_version &= ~0xf00f0;
+    env->cpuid_version |= ((value & 0xf) << 4) | ((value >> 4) << 16);
+}
+
+PropertyInfo qdev_prop_model = {
+    .name  = "uint32",
+    .get   = x86_cpuid_version_get_model,
+    .set   = x86_cpuid_version_set_model,
+};
+#define DEFINE_PROP_MODEL(_n)                                                  \
+    DEFINE_PROP(_n, X86CPU, env.cpuid_version, qdev_prop_model, uint32_t)
+
+static void x86_cpuid_version_get_stepping(Object *obj, Visitor *v,
+                                           void *opaque, const char *name,
+                                           Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+    int64_t value;
+
+    value = env->cpuid_version & 0xf;
+    visit_type_int(v, &value, name, errp);
+}
+
+static void x86_cpuid_version_set_stepping(Object *obj, Visitor *v,
+                                           void *opaque, const char *name,
+                                           Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+    const int64_t min = 0;
+    const int64_t max = 0xf;
+    int64_t value;
+
+    visit_type_int(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+    if (value < min || value > max) {
+        error_setg(errp, "Property %s.%s doesn't take value %" PRId64 " (min"
+                  "imum: %" PRId64 ", maximum: %" PRId64,
+                  object_get_typename(obj), name, value, min, max);
+        return;
+    }
+
+    env->cpuid_version &= ~0xf;
+    env->cpuid_version |= value & 0xf;
+}
+
+PropertyInfo qdev_prop_stepping = {
+    .name  = "uint32",
+    .get   = x86_cpuid_version_get_stepping,
+    .set   = x86_cpuid_version_set_stepping,
+};
+#define DEFINE_PROP_STEPPING(_n)                                               \
+    DEFINE_PROP(_n, X86CPU, env.cpuid_version, qdev_prop_stepping, uint32_t)
+
+static void x86_cpuid_get_vendor(Object *obj, Visitor *v, void *opaque,
+                       const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+    char *value;
+
+    value = (char *)g_malloc(CPUID_VENDOR_SZ + 1);
+    x86_cpu_vendor_words2str(value, env->cpuid_vendor1, env->cpuid_vendor2,
+                             env->cpuid_vendor3);
+    visit_type_str(v, &value, name, errp);
+    g_free(value);
+}
+
+static void x86_cpuid_set_vendor(Object *obj, Visitor *v, void *opaque,
+                       const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+    char *value;
+    int i;
+
+    visit_type_str(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+
+    if (strlen(value) != CPUID_VENDOR_SZ) {
+        error_setg(errp, "Property '%s.%s' doesn't take value '%s'",
+                   object_get_typename(obj), name, value);
+        g_free(value);
+        return;
+    }
+
+    env->cpuid_vendor1 = 0;
+    env->cpuid_vendor2 = 0;
+    env->cpuid_vendor3 = 0;
+    for (i = 0; i < 4; i++) {
+        env->cpuid_vendor1 |= ((uint8_t)value[i])     << (8 * i);
+        env->cpuid_vendor2 |= ((uint8_t)value[i + 4]) << (8 * i);
+        env->cpuid_vendor3 |= ((uint8_t)value[i + 8]) << (8 * i);
+    }
+    g_free(value);
+}
+
+PropertyInfo qdev_prop_vendor = {
+    .name  = "string",
+    .get   = x86_cpuid_get_vendor,
+    .set   = x86_cpuid_set_vendor,
+};
+#define DEFINE_PROP_VENDOR(_n) {                                               \
+    .name = _n,                                                                \
+    .info  = &qdev_prop_vendor                                                 \
+}
+
+static void x86_cpuid_get_model_id(Object *obj, Visitor *v, void *opaque,
+                                   const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+    char *value;
+    int i;
+
+    value = g_malloc0(48 + 1);
+    for (i = 0; i < 48; i++) {
+        value[i] = env->cpuid_model[i >> 2] >> (8 * (i & 3));
+    }
+    visit_type_str(v, &value, name, errp);
+    g_free(value);
+}
+
+static void x86_cpuid_set_model_id(Object *obj, Visitor *v, void *opaque,
+                                   const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+    int c, len, i;
+    char *value;
+
+    visit_type_str(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+
+    len = strlen(value);
+    memset(env->cpuid_model, 0, 48);
+    for (i = 0; i < 48; i++) {
+        if (i >= len) {
+            c = '\0';
+        } else {
+            c = (uint8_t)value[i];
+        }
+        env->cpuid_model[i >> 2] |= c << (8 * (i & 3));
+    }
+    g_free(value);
+}
+
+PropertyInfo qdev_prop_model_id = {
+    .name  = "string",
+    .get   = x86_cpuid_get_model_id,
+    .set   = x86_cpuid_set_model_id,
+};
+#define DEFINE_PROP_MODEL_ID(_n) {                                             \
+    .name  = _n,                                                               \
+    .info  = &qdev_prop_model_id                                               \
+}
+
+static void x86_cpuid_get_tsc_freq(Object *obj, Visitor *v, void *opaque,
+                                   const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    int64_t value;
+
+    value = cpu->env.tsc_khz * 1000;
+    visit_type_int(v, &value, name, errp);
+}
+
+static void x86_cpuid_set_tsc_freq(Object *obj, Visitor *v, void *opaque,
+                                   const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    const int64_t min = 0;
+    const int64_t max = INT64_MAX;
+    int64_t value;
+
+    visit_type_int(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+    if (value < min || value > max) {
+        error_setg(errp, "Property %s.%s doesn't take value %" PRId64 " (min"
+                  "imum: %" PRId64 ", maximum: %" PRId64,
+                  object_get_typename(obj), name, value, min, max);
+        return;
+    }
+
+    cpu->env.tsc_khz = value / 1000;
+}
+
+PropertyInfo qdev_prop_tsc_freq = {
+    .name  = "int64",
+    .get   = x86_cpuid_get_tsc_freq,
+    .set   = x86_cpuid_set_tsc_freq,
+};
+#define DEFINE_PROP_TSC_FREQ(_n)                                               \
+    DEFINE_PROP(_n, X86CPU, env.tsc_khz, qdev_prop_tsc_freq, int32_t)
+
+static Property cpu_x86_properties[] = {
+    DEFINE_PROP_FAMILY("family"),
+    DEFINE_PROP_MODEL("model"),
+    DEFINE_PROP_STEPPING("stepping"),
+    DEFINE_PROP_UINT32("level", X86CPU, env.cpuid_level, 0),
+    DEFINE_PROP_UINT32("xlevel", X86CPU, env.cpuid_xlevel, 0),
+    DEFINE_PROP_VENDOR("vendor"),
+    DEFINE_PROP_MODEL_ID("model-id"),
+    DEFINE_PROP_TSC_FREQ("tsc-frequency"),
+    DEFINE_PROP_END_OF_LIST(),
+ };
 
 /* collects per-function cpuid data
  */
@@ -1014,253 +1313,6 @@ static int kvm_check_features_against_host(X86CPU *cpu)
     return rv;
 }
 
-static void x86_cpuid_version_get_family(Object *obj, Visitor *v, void *opaque,
-                                         const char *name, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-    CPUX86State *env = &cpu->env;
-    int64_t value;
-
-    value = (env->cpuid_version >> 8) & 0xf;
-    if (value == 0xf) {
-        value += (env->cpuid_version >> 20) & 0xff;
-    }
-    visit_type_int(v, &value, name, errp);
-}
-
-static void x86_cpuid_version_set_family(Object *obj, Visitor *v, void *opaque,
-                                         const char *name, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-    CPUX86State *env = &cpu->env;
-    const int64_t min = 0;
-    const int64_t max = 0xff + 0xf;
-    int64_t value;
-
-    visit_type_int(v, &value, name, errp);
-    if (error_is_set(errp)) {
-        return;
-    }
-    if (value < min || value > max) {
-        error_set(errp, QERR_PROPERTY_VALUE_OUT_OF_RANGE, "",
-                  name ? name : "null", value, min, max);
-        return;
-    }
-
-    env->cpuid_version &= ~0xff00f00;
-    if (value > 0x0f) {
-        env->cpuid_version |= 0xf00 | ((value - 0x0f) << 20);
-    } else {
-        env->cpuid_version |= value << 8;
-    }
-}
-
-static void x86_cpuid_version_get_model(Object *obj, Visitor *v, void *opaque,
-                                        const char *name, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-    CPUX86State *env = &cpu->env;
-    int64_t value;
-
-    value = (env->cpuid_version >> 4) & 0xf;
-    value |= ((env->cpuid_version >> 16) & 0xf) << 4;
-    visit_type_int(v, &value, name, errp);
-}
-
-static void x86_cpuid_version_set_model(Object *obj, Visitor *v, void *opaque,
-                                        const char *name, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-    CPUX86State *env = &cpu->env;
-    const int64_t min = 0;
-    const int64_t max = 0xff;
-    int64_t value;
-
-    visit_type_int(v, &value, name, errp);
-    if (error_is_set(errp)) {
-        return;
-    }
-    if (value < min || value > max) {
-        error_set(errp, QERR_PROPERTY_VALUE_OUT_OF_RANGE, "",
-                  name ? name : "null", value, min, max);
-        return;
-    }
-
-    env->cpuid_version &= ~0xf00f0;
-    env->cpuid_version |= ((value & 0xf) << 4) | ((value >> 4) << 16);
-}
-
-static void x86_cpuid_version_get_stepping(Object *obj, Visitor *v,
-                                           void *opaque, const char *name,
-                                           Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-    CPUX86State *env = &cpu->env;
-    int64_t value;
-
-    value = env->cpuid_version & 0xf;
-    visit_type_int(v, &value, name, errp);
-}
-
-static void x86_cpuid_version_set_stepping(Object *obj, Visitor *v,
-                                           void *opaque, const char *name,
-                                           Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-    CPUX86State *env = &cpu->env;
-    const int64_t min = 0;
-    const int64_t max = 0xf;
-    int64_t value;
-
-    visit_type_int(v, &value, name, errp);
-    if (error_is_set(errp)) {
-        return;
-    }
-    if (value < min || value > max) {
-        error_set(errp, QERR_PROPERTY_VALUE_OUT_OF_RANGE, "",
-                  name ? name : "null", value, min, max);
-        return;
-    }
-
-    env->cpuid_version &= ~0xf;
-    env->cpuid_version |= value & 0xf;
-}
-
-static void x86_cpuid_get_level(Object *obj, Visitor *v, void *opaque,
-                                const char *name, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-
-    visit_type_uint32(v, &cpu->env.cpuid_level, name, errp);
-}
-
-static void x86_cpuid_set_level(Object *obj, Visitor *v, void *opaque,
-                                const char *name, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-
-    visit_type_uint32(v, &cpu->env.cpuid_level, name, errp);
-}
-
-static void x86_cpuid_get_xlevel(Object *obj, Visitor *v, void *opaque,
-                                 const char *name, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-
-    visit_type_uint32(v, &cpu->env.cpuid_xlevel, name, errp);
-}
-
-static void x86_cpuid_set_xlevel(Object *obj, Visitor *v, void *opaque,
-                                 const char *name, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-
-    visit_type_uint32(v, &cpu->env.cpuid_xlevel, name, errp);
-}
-
-static char *x86_cpuid_get_vendor(Object *obj, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-    CPUX86State *env = &cpu->env;
-    char *value;
-
-    value = (char *)g_malloc(CPUID_VENDOR_SZ + 1);
-    x86_cpu_vendor_words2str(value, env->cpuid_vendor1, env->cpuid_vendor2,
-                             env->cpuid_vendor3);
-    return value;
-}
-
-static void x86_cpuid_set_vendor(Object *obj, const char *value,
-                                 Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-    CPUX86State *env = &cpu->env;
-    int i;
-
-    if (strlen(value) != CPUID_VENDOR_SZ) {
-        error_set(errp, QERR_PROPERTY_VALUE_BAD, "",
-                  "vendor", value);
-        return;
-    }
-
-    env->cpuid_vendor1 = 0;
-    env->cpuid_vendor2 = 0;
-    env->cpuid_vendor3 = 0;
-    for (i = 0; i < 4; i++) {
-        env->cpuid_vendor1 |= ((uint8_t)value[i    ]) << (8 * i);
-        env->cpuid_vendor2 |= ((uint8_t)value[i + 4]) << (8 * i);
-        env->cpuid_vendor3 |= ((uint8_t)value[i + 8]) << (8 * i);
-    }
-}
-
-static char *x86_cpuid_get_model_id(Object *obj, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-    CPUX86State *env = &cpu->env;
-    char *value;
-    int i;
-
-    value = g_malloc(48 + 1);
-    for (i = 0; i < 48; i++) {
-        value[i] = env->cpuid_model[i >> 2] >> (8 * (i & 3));
-    }
-    value[48] = '\0';
-    return value;
-}
-
-static void x86_cpuid_set_model_id(Object *obj, const char *model_id,
-                                   Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-    CPUX86State *env = &cpu->env;
-    int c, len, i;
-
-    if (model_id == NULL) {
-        model_id = "";
-    }
-    len = strlen(model_id);
-    memset(env->cpuid_model, 0, 48);
-    for (i = 0; i < 48; i++) {
-        if (i >= len) {
-            c = '\0';
-        } else {
-            c = (uint8_t)model_id[i];
-        }
-        env->cpuid_model[i >> 2] |= c << (8 * (i & 3));
-    }
-}
-
-static void x86_cpuid_get_tsc_freq(Object *obj, Visitor *v, void *opaque,
-                                   const char *name, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-    int64_t value;
-
-    value = cpu->env.tsc_khz * 1000;
-    visit_type_int(v, &value, name, errp);
-}
-
-static void x86_cpuid_set_tsc_freq(Object *obj, Visitor *v, void *opaque,
-                                   const char *name, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-    const int64_t min = 0;
-    const int64_t max = INT64_MAX;
-    int64_t value;
-
-    visit_type_int(v, &value, name, errp);
-    if (error_is_set(errp)) {
-        return;
-    }
-    if (value < min || value > max) {
-        error_set(errp, QERR_PROPERTY_VALUE_OUT_OF_RANGE, "",
-                  name ? name : "null", value, min, max);
-        return;
-    }
-
-    cpu->env.tsc_khz = value / 1000;
-}
-
 static int cpu_x86_find_by_name(x86_def_t *x86_cpu_def, const char *name)
 {
     x86_def_t *def;
@@ -1297,6 +1349,17 @@ static int cpu_x86_find_by_name(x86_def_t *x86_cpu_def, const char *name)
     return -1;
 }
 
+/* It converts all '_' in a feature string option name with '-', to make
+ * feature name to conform property naming rule which uses '-' instead of '-'
+ */
+static inline void feat2prop(char *s)
+{
+    char *delimiter = strchr(s, '=');
+    while ((s = strchr(s, '_')) && ((delimiter == NULL) || (s < delimiter))) {
+        *s = '-';
+    }
+}
+
 /* Parse "+feature,-feature,feature=foo" CPU feature string
  */
 static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
@@ -1318,6 +1381,7 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
         } else if (featurestr[0] == '-') {
             add_flagname_to_bitmaps(featurestr + 1, minus_features);
         } else if ((val = strchr(featurestr, '='))) {
+            feat2prop(featurestr);
             *val = 0; val++;
             if (!strcmp(featurestr, "family")) {
                 object_property_parse(OBJECT(cpu), val, featurestr, errp);
@@ -1345,9 +1409,9 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
                 object_property_parse(OBJECT(cpu), num, featurestr, errp);
             } else if (!strcmp(featurestr, "vendor")) {
                 object_property_parse(OBJECT(cpu), val, featurestr, errp);
-            } else if (!strcmp(featurestr, "model_id")) {
-                object_property_parse(OBJECT(cpu), val, "model-id", errp);
-            } else if (!strcmp(featurestr, "tsc_freq")) {
+            } else if (!strcmp(featurestr, "model-id")) {
+                object_property_parse(OBJECT(cpu), val, featurestr, errp);
+            } else if (!strcmp(featurestr, "tsc-freq")) {
                 int64_t tsc_freq;
                 char *err;
                 char num[32];
@@ -1360,7 +1424,7 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
                 }
                 snprintf(num, sizeof(num), "%" PRId64, tsc_freq);
                 object_property_parse(OBJECT(cpu), num, "tsc-frequency", errp);
-            } else if (!strcmp(featurestr, "hv_spinlocks")) {
+            } else if (!strcmp(featurestr, "hv-spinlocks")) {
                 char *err;
                 numvalue = strtoul(val, &err, 0);
                 if (!*val || *err) {
@@ -2190,31 +2254,6 @@ static void x86_cpu_initfn(Object *obj)
 
     cpu_exec_init(env);
 
-    object_property_add(obj, "family", "int",
-                        x86_cpuid_version_get_family,
-                        x86_cpuid_version_set_family, NULL, NULL, NULL);
-    object_property_add(obj, "model", "int",
-                        x86_cpuid_version_get_model,
-                        x86_cpuid_version_set_model, NULL, NULL, NULL);
-    object_property_add(obj, "stepping", "int",
-                        x86_cpuid_version_get_stepping,
-                        x86_cpuid_version_set_stepping, NULL, NULL, NULL);
-    object_property_add(obj, "level", "int",
-                        x86_cpuid_get_level,
-                        x86_cpuid_set_level, NULL, NULL, NULL);
-    object_property_add(obj, "xlevel", "int",
-                        x86_cpuid_get_xlevel,
-                        x86_cpuid_set_xlevel, NULL, NULL, NULL);
-    object_property_add_str(obj, "vendor",
-                            x86_cpuid_get_vendor,
-                            x86_cpuid_set_vendor, NULL);
-    object_property_add_str(obj, "model-id",
-                            x86_cpuid_get_model_id,
-                            x86_cpuid_set_model_id, NULL);
-    object_property_add(obj, "tsc-frequency", "int",
-                        x86_cpuid_get_tsc_freq,
-                        x86_cpuid_set_tsc_freq, NULL, NULL, NULL);
-
     env->cpuid_apic_id = x86_cpu_apic_id_from_index(cs->cpu_index);
 
     /* init various static tables used in TCG mode */
@@ -2234,6 +2273,7 @@ static void x86_cpu_common_class_init(ObjectClass *oc, void *data)
     DeviceClass *dc = DEVICE_CLASS(oc);
 
     xcc->parent_realize = dc->realize;
+    dc->props = cpu_x86_properties;
     dc->realize = x86_cpu_realizefn;
 
     xcc->parent_reset = cc->reset;
