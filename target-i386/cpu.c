@@ -455,6 +455,7 @@ static Property cpu_x86_properties[] = {
     FEAT("f-smap", env.cpuid_7_0_ebx_features, 20, false),
     DEFINE_PROP_VENDOR("vendor", X86CPU, env.cpuid_vendor1),
     DEFINE_PROP_UINT32("xlevel", X86CPU, env.cpuid_xlevel, 0),
+    DEFINE_PROP_UINT32("level", X86CPU, env.cpuid_level, 0),
     DEFINE_PROP_END_OF_LIST(),
  };
 
@@ -1285,22 +1286,6 @@ static void x86_cpuid_version_set_stepping(Object *obj, Visitor *v,
 
     env->cpuid_version &= ~0xf;
     env->cpuid_version |= value & 0xf;
-}
-
-static void x86_cpuid_get_level(Object *obj, Visitor *v, void *opaque,
-                                const char *name, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-
-    visit_type_uint32(v, &cpu->env.cpuid_level, name, errp);
-}
-
-static void x86_cpuid_set_level(Object *obj, Visitor *v, void *opaque,
-                                const char *name, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-
-    visit_type_uint32(v, &cpu->env.cpuid_level, name, errp);
 }
 
 static char *x86_cpuid_get_model_id(Object *obj, Error **errp)
@@ -2253,9 +2238,6 @@ static void x86_cpu_initfn(Object *obj)
     object_property_add(obj, "stepping", "int",
                         x86_cpuid_version_get_stepping,
                         x86_cpuid_version_set_stepping, NULL, NULL, NULL);
-    object_property_add(obj, "level", "int",
-                        x86_cpuid_get_level,
-                        x86_cpuid_set_level, NULL, NULL, NULL);
     object_property_add_str(obj, "model-id",
                             x86_cpuid_get_model_id,
                             x86_cpuid_set_model_id, NULL);
