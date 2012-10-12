@@ -454,6 +454,7 @@ static Property cpu_x86_properties[] = {
     FEAT("f-adx", env.cpuid_7_0_ebx_features, 19, false),
     FEAT("f-smap", env.cpuid_7_0_ebx_features, 20, false),
     DEFINE_PROP_VENDOR("vendor", X86CPU, env.cpuid_vendor1),
+    DEFINE_PROP_UINT32("xlevel", X86CPU, env.cpuid_xlevel, 0),
     DEFINE_PROP_END_OF_LIST(),
  };
 
@@ -1300,22 +1301,6 @@ static void x86_cpuid_set_level(Object *obj, Visitor *v, void *opaque,
     X86CPU *cpu = X86_CPU(obj);
 
     visit_type_uint32(v, &cpu->env.cpuid_level, name, errp);
-}
-
-static void x86_cpuid_get_xlevel(Object *obj, Visitor *v, void *opaque,
-                                 const char *name, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-
-    visit_type_uint32(v, &cpu->env.cpuid_xlevel, name, errp);
-}
-
-static void x86_cpuid_set_xlevel(Object *obj, Visitor *v, void *opaque,
-                                 const char *name, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-
-    visit_type_uint32(v, &cpu->env.cpuid_xlevel, name, errp);
 }
 
 static char *x86_cpuid_get_model_id(Object *obj, Error **errp)
@@ -2271,9 +2256,6 @@ static void x86_cpu_initfn(Object *obj)
     object_property_add(obj, "level", "int",
                         x86_cpuid_get_level,
                         x86_cpuid_set_level, NULL, NULL, NULL);
-    object_property_add(obj, "xlevel", "int",
-                        x86_cpuid_get_xlevel,
-                        x86_cpuid_set_xlevel, NULL, NULL, NULL);
     object_property_add_str(obj, "model-id",
                             x86_cpuid_get_model_id,
                             x86_cpuid_set_model_id, NULL);
