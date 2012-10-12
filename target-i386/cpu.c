@@ -244,6 +244,59 @@ PropertyInfo qdev_prop_kvmclock = {
 
 #endif
 
+static void x86_cpuid_get_vendor(Object *obj, Visitor *v, void *opaque,
+                       const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+    char *value;
+
+    value = (char *)g_malloc(CPUID_VENDOR_SZ + 1);
+    x86_cpu_vendor_words2str(value, env->cpuid_vendor1, env->cpuid_vendor2,
+                             env->cpuid_vendor3);
+    visit_type_str(v, &value, name, errp);
+    g_free(value);
+}
+
+static void x86_cpuid_set_vendor(Object *obj, Visitor *v, void *opaque,
+                       const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    CPUX86State *env = &cpu->env;
+    char *value;
+    int i;
+
+    visit_type_str(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+
+    if (strlen(value) != CPUID_VENDOR_SZ) {
+        error_setg(errp, "Property '%s.%s' doesn't take value '%s'",
+                   object_get_typename(obj), name, value);
+        g_free(value);
+        return;
+    }
+
+    env->cpuid_vendor1 = 0;
+    env->cpuid_vendor2 = 0;
+    env->cpuid_vendor3 = 0;
+    for (i = 0; i < 4; i++) {
+        env->cpuid_vendor1 |= ((uint8_t)value[i]) << (8 * i);
+        env->cpuid_vendor2 |= ((uint8_t)value[i + 4]) << (8 * i);
+        env->cpuid_vendor3 |= ((uint8_t)value[i + 8]) << (8 * i);
+    }
+    g_free(value);
+}
+
+PropertyInfo qdev_prop_vendor = {
+    .name  = "string",
+    .get   = x86_cpuid_get_vendor,
+    .set   = x86_cpuid_set_vendor,
+};
+#define DEFINE_PROP_VENDOR(_n, _s, _f)                                         \
+    DEFINE_PROP(_n, _s, _f, qdev_prop_vendor, uint32_t)
+
 #define FEAT(_name, _field, _bit, _val) \
     DEFINE_PROP_BIT(_name, X86CPU, _field, _bit, _val)
 
@@ -400,6 +453,7 @@ static Property cpu_x86_properties[] = {
     FEAT("f-rdseed", env.cpuid_7_0_ebx_features, 18, false),
     FEAT("f-adx", env.cpuid_7_0_ebx_features, 19, false),
     FEAT("f-smap", env.cpuid_7_0_ebx_features, 20, false),
+    DEFINE_PROP_VENDOR("vendor", X86CPU, env.cpuid_vendor1),
     DEFINE_PROP_END_OF_LIST(),
  };
 
@@ -1262,41 +1316,6 @@ static void x86_cpuid_set_xlevel(Object *obj, Visitor *v, void *opaque,
     X86CPU *cpu = X86_CPU(obj);
 
     visit_type_uint32(v, &cpu->env.cpuid_xlevel, name, errp);
-}
-
-static char *x86_cpuid_get_vendor(Object *obj, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-    CPUX86State *env = &cpu->env;
-    char *value;
-
-    value = (char *)g_malloc(CPUID_VENDOR_SZ + 1);
-    x86_cpu_vendor_words2str(value, env->cpuid_vendor1, env->cpuid_vendor2,
-                             env->cpuid_vendor3);
-    return value;
-}
-
-static void x86_cpuid_set_vendor(Object *obj, const char *value,
-                                 Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-    CPUX86State *env = &cpu->env;
-    int i;
-
-    if (strlen(value) != CPUID_VENDOR_SZ) {
-        error_set(errp, QERR_PROPERTY_VALUE_BAD, "",
-                  "vendor", value);
-        return;
-    }
-
-    env->cpuid_vendor1 = 0;
-    env->cpuid_vendor2 = 0;
-    env->cpuid_vendor3 = 0;
-    for (i = 0; i < 4; i++) {
-        env->cpuid_vendor1 |= ((uint8_t)value[i    ]) << (8 * i);
-        env->cpuid_vendor2 |= ((uint8_t)value[i + 4]) << (8 * i);
-        env->cpuid_vendor3 |= ((uint8_t)value[i + 8]) << (8 * i);
-    }
 }
 
 static char *x86_cpuid_get_model_id(Object *obj, Error **errp)
@@ -2255,9 +2274,6 @@ static void x86_cpu_initfn(Object *obj)
     object_property_add(obj, "xlevel", "int",
                         x86_cpuid_get_xlevel,
                         x86_cpuid_set_xlevel, NULL, NULL, NULL);
-    object_property_add_str(obj, "vendor",
-                            x86_cpuid_get_vendor,
-                            x86_cpuid_set_vendor, NULL);
     object_property_add_str(obj, "model-id",
                             x86_cpuid_get_model_id,
                             x86_cpuid_set_model_id, NULL);
