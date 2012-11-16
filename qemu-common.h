@@ -292,7 +292,6 @@ typedef struct MouseTransformInfo MouseTransformInfo;
 typedef struct uWireSlave uWireSlave;
 typedef struct I2SCodec I2SCodec;
 typedef struct SSIBus SSIBus;
-typedef struct EventNotifier EventNotifier;
 typedef struct VirtIODevice VirtIODevice;
 typedef struct QEMUSGList QEMUSGList;
 typedef struct SHPCDevice SHPCDevice;
@@ -363,27 +362,6 @@ ssize_t qemu_co_send_recv(int sockfd, void *buf, size_t bytes, bool do_send);
   qemu_co_send_recv(sockfd, buf, bytes, false)
 #define qemu_co_send(sockfd, buf, bytes) \
   qemu_co_send_recv(sockfd, buf, bytes, true)
-
-typedef struct QEMUIOVector {
-    struct iovec *iov;
-    int niov;
-    int nalloc;
-    size_t size;
-} QEMUIOVector;
-
-void qemu_iovec_init(QEMUIOVector *qiov, int alloc_hint);
-void qemu_iovec_init_external(QEMUIOVector *qiov, struct iovec *iov, int niov);
-void qemu_iovec_add(QEMUIOVector *qiov, void *base, size_t len);
-void qemu_iovec_concat(QEMUIOVector *dst,
-                       QEMUIOVector *src, size_t soffset, size_t sbytes);
-void qemu_iovec_destroy(QEMUIOVector *qiov);
-void qemu_iovec_reset(QEMUIOVector *qiov);
-size_t qemu_iovec_to_buf(QEMUIOVector *qiov, size_t offset,
-                         void *buf, size_t bytes);
-size_t qemu_iovec_from_buf(QEMUIOVector *qiov, size_t offset,
-                           const void *buf, size_t bytes);
-size_t qemu_iovec_memset(QEMUIOVector *qiov, size_t offset,
-                         int fillc, size_t bytes);
 
 bool buffer_is_zero(const void *buf, size_t len);
 

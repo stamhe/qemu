@@ -1,9 +1,13 @@
 #ifndef QEMU_TIMER_H
 #define QEMU_TIMER_H
 
-#include "qemu-common.h"
-#include "main-loop.h"
+#include <sys/time.h>
+#include <stdbool.h>
+#include <time.h>
+
+//#include "main-loop.h"
 #include "notify.h"
+#include "qemu-file.h"
 
 #ifdef __FreeBSD__
 #include <sys/param.h>
@@ -17,6 +21,7 @@
 
 typedef struct QEMUClock QEMUClock;
 typedef void QEMUTimerCB(void *opaque);
+typedef struct QEMUTimer QEMUTimer;
 
 /* The real time clock should be used only for stuff which does not
    change the virtual machine state, as it is run even if the virtual

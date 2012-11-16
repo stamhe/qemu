@@ -2,6 +2,7 @@
 #define CONSOLE_H
 
 #include "qemu-char.h"
+#include "qemu-common.h"
 #include "qemu-pixman.h"
 #include "qdict.h"
 #include "notify.h"

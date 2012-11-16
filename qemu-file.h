@@ -24,6 +24,11 @@
 #ifndef QEMU_FILE_H
 #define QEMU_FILE_H 1
 
+#include <stdint.h>
+#include <stdio.h>
+
+typedef struct QEMUFile QEMUFile;
+
 /* This function writes a chunk of data to a file at the given position.
  * The pos argument can be ignored if the file is only being used for
  * streaming.  The handler should try to write all of the data it can.

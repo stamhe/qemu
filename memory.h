@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "event_notifier.h"
 #include "qemu-common.h"
 #include "cpu-common.h"
 #include "hwaddr.h"

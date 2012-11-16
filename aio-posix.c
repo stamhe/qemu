@@ -13,6 +13,7 @@
  * GNU GPL, version 2 or (at your option) any later version.
  */
 
+#include "qemu-aio.h"
 #include "qemu-common.h"
 #include "block.h"
 #include "qemu-queue.h"

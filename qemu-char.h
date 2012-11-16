@@ -1,8 +1,6 @@
 #ifndef QEMU_CHAR_H
 #define QEMU_CHAR_H
 
-#include "hw/qdev-core.h"
-#include "qemu-common.h"
 #include "qemu-queue.h"
 #include "qemu-option.h"
 #include "qemu-config.h"
@@ -10,6 +8,7 @@
 #include "qobject.h"
 #include "qstring.h"
 #include "main-loop.h"
+#include "qemu-timer.h"
 
 /* character device */
 
@@ -53,6 +52,8 @@ typedef struct {
 #define CHR_TIOCM_RTS	0x004
 
 typedef void IOEventHandler(void *opaque, int event);
+
+typedef struct CharDriverState CharDriverState;
 
 struct CharDriverState {
     void (*init)(struct CharDriverState *s);
@@ -233,8 +234,6 @@ void qemu_chr_add_handlers(CharDriverState *s,
 void qemu_chr_generic_open(CharDriverState *s);
 void qemu_chr_accept_input(CharDriverState *s);
 int qemu_chr_add_client(CharDriverState *s, int fd);
-void qemu_chr_info_print(Monitor *mon, const QObject *ret_data);
-void qemu_chr_info(Monitor *mon, QObject **ret_data);
 CharDriverState *qemu_chr_find(const char *name);
 
 QemuOpts *qemu_chr_parse_compat(const char *label, const char *filename);

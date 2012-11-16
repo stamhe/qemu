@@ -13,7 +13,7 @@
 #include "block.h"
 #include "error.h"
 #include "qemu-queue.h"
-#include "hw/qdev-core.h"
+#include "monitor.h"
 
 void blockdev_mark_auto_del(BlockDriverState *bs);
 void blockdev_auto_del(BlockDriverState *bs);
@@ -24,6 +24,8 @@ typedef enum {
     IF_IDE, IF_SCSI, IF_FLOPPY, IF_PFLASH, IF_MTD, IF_SD, IF_VIRTIO, IF_XEN,
     IF_COUNT
 } BlockInterfaceType;
+
+typedef struct DriveInfo DriveInfo;
 
 struct DriveInfo {
     BlockDriverState *bdrv;

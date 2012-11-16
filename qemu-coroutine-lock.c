@@ -27,6 +27,7 @@
 #include "qemu-coroutine-int.h"
 #include "qemu-queue.h"
 #include "qemu-aio.h"
+#include "main-loop.h"
 #include "trace.h"
 
 static QTAILQ_HEAD(, Coroutine) unlock_bh_queue =

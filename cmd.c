@@ -22,10 +22,12 @@
 #include <errno.h>
 #include <sys/time.h>
 #include <getopt.h>
+#include <unistd.h>
 
 #include "cmd.h"
 #include "qemu-aio.h"
 #include "main-loop.h"
+#include "qemu-common.h"
 
 #define _(x)	x	/* not gettext support yet */
 

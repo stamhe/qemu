@@ -1,6 +1,7 @@
 #ifndef QDEV_CORE_H
 #define QDEV_CORE_H
 
+#include "monitor.h"
 #include "qemu-queue.h"
 #include "qemu-option.h"
 #include "qemu/object.h"
@@ -18,8 +19,6 @@ typedef struct BusState BusState;
 typedef struct BusClass BusClass;
 
 typedef struct DeviceState DeviceState;
-
-typedef struct Monitor Monitor;
 
 enum DevState {
     DEV_STATE_CREATED = 1,

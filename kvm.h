@@ -16,6 +16,7 @@
 
 #include <errno.h>
 #include "config-host.h"
+#include "event_notifier.h"
 #include "qemu-queue.h"
 
 #ifdef CONFIG_KVM

@@ -7,6 +7,7 @@
  * (GNU GPL), version 2 or later.
  */
 
+#include "main-loop.h"
 #include "dma.h"
 #include "trace.h"
 #include "range.h"

@@ -1,12 +1,16 @@
 #ifndef BLOCK_H
 #define BLOCK_H
 
-#include "qemu-aio.h"
-#include "qemu-common.h"
+//#include "qemu-aio.h"
 #include "qemu-option.h"
 #include "qemu-coroutine.h"
 #include "qobject.h"
 #include "qapi-types.h"
+#include "iov.h"
+
+typedef struct BlockDriverState BlockDriverState;
+typedef struct BlockDriverAIOCB BlockDriverAIOCB;
+typedef void BlockDriverCompletionFunc(void *opaque, int ret);
 
 /* block.c */
 typedef struct BlockDriver BlockDriver;

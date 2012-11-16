@@ -8,6 +8,7 @@
  * This code is licensed under the GPL.
  */
 
+#include "main-loop.h"
 #include "hw.h"
 #include "sh.h"
 #include "qemu-timer.h"

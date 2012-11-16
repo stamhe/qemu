@@ -29,16 +29,6 @@
 /***********************************************************/
 /* bottom halves (can be seen as timers which expire ASAP) */
 
-struct QEMUBH {
-    AioContext *ctx;
-    QEMUBHFunc *cb;
-    void *opaque;
-    QEMUBH *next;
-    bool scheduled;
-    bool idle;
-    bool deleted;
-};
-
 QEMUBH *aio_bh_new(AioContext *ctx, QEMUBHFunc *cb, void *opaque)
 {
     QEMUBH *bh;

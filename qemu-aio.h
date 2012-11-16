@@ -14,12 +14,13 @@
 #ifndef QEMU_AIO_H
 #define QEMU_AIO_H
 
-#include "qemu-common.h"
+#include <glib.h>
 #include "qemu-queue.h"
 #include "event_notifier.h"
+#include "block.h"
 
-typedef struct BlockDriverAIOCB BlockDriverAIOCB;
-typedef void BlockDriverCompletionFunc(void *opaque, int ret);
+typedef struct QEMUBH QEMUBH;
+typedef struct AioContext AioContext;
 
 typedef struct AIOPool {
     void (*cancel)(BlockDriverAIOCB *acb);
@@ -43,7 +44,17 @@ typedef struct AioHandler AioHandler;
 typedef void QEMUBHFunc(void *opaque);
 typedef void IOHandler(void *opaque);
 
-typedef struct AioContext {
+struct QEMUBH {
+    AioContext *ctx;
+    QEMUBHFunc *cb;
+    void *opaque;
+    QEMUBH *next;
+    bool scheduled;
+    bool idle;
+    bool deleted;
+};
+
+struct AioContext {
     GSource source;
 
     /* The list of registered AIO handlers */
@@ -65,7 +76,7 @@ typedef struct AioContext {
 
     /* Used for aio_notify.  */
     EventNotifier notifier;
-} AioContext;
+};
 
 /* Returns 1 if there are still outstanding AIO requests; 0 otherwise */
 typedef int (AioFlushEventNotifierHandler)(EventNotifier *e);

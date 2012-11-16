@@ -17,6 +17,7 @@
  */
 
 #include "iov.h"
+#include "osdep.h"
 
 #ifdef _WIN32
 # include <windows.h>
@@ -25,6 +26,13 @@
 # include <sys/types.h>
 # include <sys/socket.h>
 #endif
+
+#include <string.h>
+#include <stdint.h>
+#include <assert.h>
+#include <errno.h>
+#include <glib.h>
+
 
 size_t iov_from_buf(const struct iovec *iov, unsigned int iov_cnt,
                     size_t offset, const void *buf, size_t bytes)

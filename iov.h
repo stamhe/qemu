@@ -11,7 +11,11 @@
  * the COPYING file in the top-level directory.
  */
 
-#include "qemu-common.h"
+#ifndef IOV_H
+#define IOV_H
+
+#include "qemu-stdio.h"
+#include <stdbool.h>
 
 /**
  * count and return data size, in bytes, of an iovec
@@ -95,3 +99,25 @@ void iov_hexdump(const struct iovec *iov, const unsigned int iov_cnt,
 unsigned iov_copy(struct iovec *dst_iov, unsigned int dst_iov_cnt,
                  const struct iovec *iov, unsigned int iov_cnt,
                  size_t offset, size_t bytes);
+
+typedef struct QEMUIOVector {
+    struct iovec *iov;
+    int niov;
+    int nalloc;
+    size_t size;
+} QEMUIOVector;
+
+void qemu_iovec_init(QEMUIOVector *qiov, int alloc_hint);
+void qemu_iovec_init_external(QEMUIOVector *qiov, struct iovec *iov, int niov);
+void qemu_iovec_add(QEMUIOVector *qiov, void *base, size_t len);
+void qemu_iovec_concat(QEMUIOVector *dst,
+                       QEMUIOVector *src, size_t soffset, size_t sbytes);
+void qemu_iovec_destroy(QEMUIOVector *qiov);
+void qemu_iovec_reset(QEMUIOVector *qiov);
+size_t qemu_iovec_to_buf(QEMUIOVector *qiov, size_t offset,
+                         void *buf, size_t bytes);
+size_t qemu_iovec_from_buf(QEMUIOVector *qiov, size_t offset,
+                           const void *buf, size_t bytes);
+size_t qemu_iovec_memset(QEMUIOVector *qiov, size_t offset,
+                         int fillc, size_t bytes);
+#endif

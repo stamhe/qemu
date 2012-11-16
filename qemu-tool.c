@@ -25,12 +25,6 @@
 
 #include <sys/time.h>
 
-struct QEMUBH
-{
-    QEMUBHFunc *cb;
-    void *opaque;
-};
-
 const char *qemu_get_vm_name(void)
 {
     return NULL;
