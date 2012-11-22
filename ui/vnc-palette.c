@@ -27,6 +27,8 @@
  */
 
 #include "vnc-palette.h"
+#include <string.h>
+#include <glib.h>
 
 static VncPaletteEntry *palette_find(const VncPalette *palette,
                                      uint32_t color, unsigned int hash)
