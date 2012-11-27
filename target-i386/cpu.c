@@ -331,6 +331,7 @@ static Property cpu_x86_properties[] = {
     FEAT("f-phe-en", env.cpuid_ext4_features, 11, false),
     FEAT("f-pmm", env.cpuid_ext4_features, 12, false),
     FEAT("f-pmm-en", env.cpuid_ext4_features, 13, false),
+#if defined(CONFIG_KVM)
     FEAT("f-kvmclock", env.cpuid_kvm_features,  0, false),
     FEAT("f-kvm_nopiodelay", env.cpuid_kvm_features,  1, false),
     FEAT("f-kvm_mmu", env.cpuid_kvm_features,  2, false),
@@ -339,6 +340,7 @@ static Property cpu_x86_properties[] = {
     FEAT("f-kvm_steal_tm", env.cpuid_kvm_features,  5, false),
     FEAT("f-kvm_pv_eoi", env.cpuid_kvm_features,  6, false),
     FEAT("f-kvmclock_stable", env.cpuid_kvm_features,  24, false),
+#endif
     FEAT("f-npt", env.cpuid_svm_features,  0, false),
     FEAT("f-lbrv", env.cpuid_svm_features,  1, false),
     FEAT("f-svm_lock", env.cpuid_svm_features,  2, false),
