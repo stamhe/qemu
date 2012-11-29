@@ -104,6 +104,41 @@ PropertyInfo qdev_prop_bit = {
     .set   = set_bit,
 };
 
+/* --- bool --- */
+
+static void get_bool(Object *obj, Visitor *v, void *opaque,
+                       const char *name, Error **errp)
+{
+    DeviceState *dev = DEVICE(obj);
+    Property *prop = opaque;
+    bool *ptr = qdev_get_prop_ptr(dev, prop);
+
+    visit_type_bool(v, ptr, name, errp);
+}
+
+static void set_bool(Object *obj, Visitor *v, void *opaque,
+                       const char *name, Error **errp)
+{
+    DeviceState *dev = DEVICE(obj);
+    Property *prop = opaque;
+    bool *ptr = qdev_get_prop_ptr(dev, prop);
+
+    if (dev->state != DEV_STATE_CREATED) {
+        error_setg(errp,
+                   "Setting property (%s) on not created Device in forbidden",
+                   name);
+        return;
+    }
+
+    visit_type_bool(v, ptr, name, errp);
+}
+
+PropertyInfo qdev_prop_bool = {
+    .name  = "boolean",
+    .get   = get_bool,
+    .set   = set_bool,
+};
+
 /* --- 8bit integer --- */
 
 static void get_uint8(Object *obj, Visitor *v, void *opaque,
