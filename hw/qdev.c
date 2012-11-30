@@ -632,6 +632,8 @@ void qdev_property_add_static(DeviceState *dev, Property *prop,
                                 prop->name, &local_err);
     } else if (prop->qtype == QTYPE_QINT) {
         object_property_set_int(obj, prop->defval, prop->name, &local_err);
+    } else if (prop->qtype == QTYPE_QSTRING && prop->defval_str) {
+        object_property_parse(obj, prop->defval_str, prop->name, &local_err);
     }
     assert_no_error(local_err);
 }
