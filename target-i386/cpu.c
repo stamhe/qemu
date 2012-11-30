@@ -2459,7 +2459,17 @@ static void x86_cpu_common_class_init(ObjectClass *oc, void *data)
 
     xcc->parent_reset = cc->reset;
     cc->reset = x86_cpu_reset;
-    dc->props = cpu_x86_properties;
+
+    dc->props = g_malloc0(sizeof(cpu_x86_properties));
+    memcpy(dc->props, cpu_x86_properties, sizeof(cpu_x86_properties));
+
+}
+
+static void x86_cpu_common_cpu_class_finalize(ObjectClass *oc, void *data)
+{
+    DeviceClass *dc = DEVICE_CLASS(oc);
+    g_free(dc->props);
+    dc->props = NULL;
 }
 
 static const TypeInfo x86_cpu_type_info = {
@@ -2470,6 +2480,7 @@ static const TypeInfo x86_cpu_type_info = {
     .abstract = false,
     .class_size = sizeof(X86CPUClass),
     .class_init = x86_cpu_common_class_init,
+    .class_finalize = x86_cpu_common_cpu_class_finalize,
 };
 
 static void x86_cpu_register_types(void)
