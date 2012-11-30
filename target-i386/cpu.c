@@ -954,6 +954,32 @@ typedef struct x86_def_t {
 #define TCG_SVM_FEATURES 0
 #define TCG_7_0_EBX_FEATURES (CPUID_7_0_EBX_SMEP | CPUID_7_0_EBX_SMAP)
 
+#define SET_DEFAULT_PROP_INT(_dc, _name, _val)      \
+    {                                               \
+        Property *prop = qdev_prop_find(_dc, _name);\
+        assert(prop);                               \
+        prop->defval = (uint32_t)_val;                        \
+    }
+#define SET_DEFAULT_FEATS(dc, _field, _feat_word)                            \
+    {   int i;                                                               \
+        for (i = 0; i < 32; ++i) {                                           \
+            Property *prop = QDEV_FIND_PROP_FROM_BIT(dc, X86CPU, _field, i); \
+            if (prop) {                                                      \
+                if(((_feat_word) >> i) & 1) prop->defval = 1;                \
+                else prop->defval = 0;                                       \
+            } else {                                                         \
+                printf("bit %d is not in feats\n", i);                       \
+            }                                                                \
+        }                                                                    \
+    }
+
+#define SET_DEFAULT_PROP_STR(_dc, _name, _val)      \
+    {                                               \
+        Property *prop = qdev_prop_find(_dc, _name);\
+        assert(prop);                               \
+        prop->defval_str = (char*)_val;             \
+    }
+
 /* maintains list of cpu model definitions
  */
 static x86_def_t *x86_defs = {NULL};
