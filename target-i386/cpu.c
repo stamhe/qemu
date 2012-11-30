@@ -1632,38 +1632,6 @@ static int kvm_check_features_against_host(X86CPU *cpu)
     return rv;
 }
 
-static int cpu_x86_find_by_name(x86_def_t *x86_cpu_def, const char *name)
-{
-    x86_def_t *def;
-
-    for (def = x86_defs; def; def = def->next) {
-        if (name && !strcmp(name, def->name)) {
-            break;
-        }
-    }
-    if (kvm_enabled() && name && strcmp(name, "host") == 0) {
-        kvm_cpu_fill_host(x86_cpu_def);
-    } else if (!def) {
-        return -1;
-    } else {
-        memcpy(x86_cpu_def, def, sizeof(*def));
-        /* sysenter isn't supported on compatibility mode on AMD, syscall
-         * isn't supported in compatibility mode on Intel.
-         * Normally we advertise the actual cpu vendor, but you can override
-         * this using the 'vendor' property if you want to use KVM's
-         * sysenter/syscall emulation in compatibility mode and when doing
-         * cross vendor migration
-         */
-        if (kvm_enabled()) {
-            uint32_t  ebx = 0, ecx = 0, edx = 0;
-            host_cpuid(0, 0, NULL, &ebx, &ecx, &edx);
-            x86_cpu_vendor_words2str(x86_cpu_def->vendor, ebx, edx, ecx);
-        }
-    }
-
-    return 0;
-}
-
 /* Set features on X86CPU object based on a provided key,value list */
 static void x86_cpu_set_props(X86CPU *cpu, QDict *features, Error **errp)
 {
@@ -1682,8 +1650,7 @@ static void x86_cpu_set_props(X86CPU *cpu, QDict *features, Error **errp)
 
 /* Parse "+feature,-feature,feature=foo" CPU feature string
  */
-static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features,
-                                    QDict **props)
+static int cpu_x86_parse_featurestr(char *features, QDict **props)
 {
     char *featurestr; /* Single 'key=value" string being parsed */
     uint32_t numvalue;
@@ -1861,16 +1828,13 @@ static void filter_features_for_kvm(X86CPU *cpu)
 }
 #endif
 
-int cpu_x86_register(X86CPU *cpu, const char *cpu_model)
+X86CPU *cpu_x86_init(const char *cpu_model)
 {
-    CPUX86State *env = &cpu->env;
-    x86_def_t def1, *def = &def1;
+    X86CPU *cpu = NULL;
     QDict *props = NULL;
     Error *error = NULL;
     char *name, *features;
     gchar **model_pieces;
-
-    memset(def, 0, sizeof(*def));
 
     model_pieces = g_strsplit(cpu_model, ",", 2);
     if (!model_pieces[0]) {
@@ -1880,37 +1844,23 @@ int cpu_x86_register(X86CPU *cpu, const char *cpu_model)
     name = model_pieces[0];
     features = model_pieces[1];
 
-    if (cpu_x86_find_by_name(def, name) < 0) {
-        error_setg(&error, "Unable to find CPU definition: %s", name);
-        goto out;
-    }
-
-    def->kvm_features |= cpu->env.cpuid_kvm_features;
-    def->ext_features |= cpu->env.cpuid_ext_features & CPUID_EXT_HYPERVISOR;
-
-    if (cpu_x86_parse_featurestr(def, features, &props) < 0) {
+    if (cpu_x86_parse_featurestr(features, &props) < 0) {
         error_setg(&error, "Invalid cpu_model string format: %s", cpu_model);
         goto out;
     }
-    assert(def->vendor[0]);
-    object_property_set_str(OBJECT(cpu), def->vendor, "vendor", &error);
-    object_property_set_int(OBJECT(cpu), def->level, "level", &error);
-    object_property_set_int(OBJECT(cpu), def->family, "family", &error);
-    object_property_set_int(OBJECT(cpu), def->model, "model", &error);
-    object_property_set_int(OBJECT(cpu), def->stepping, "stepping", &error);
-    env->cpuid_features = def->features;
-    env->cpuid_ext_features = def->ext_features;
-    env->cpuid_ext2_features = def->ext2_features;
-    env->cpuid_ext3_features = def->ext3_features;
-    object_property_set_int(OBJECT(cpu), def->xlevel, "xlevel", &error);
-    env->cpuid_kvm_features = def->kvm_features;
-    env->cpuid_svm_features = def->svm_features;
-    env->cpuid_ext4_features = def->ext4_features;
-    env->cpuid_7_0_ebx_features = def->cpuid_7_0_ebx_features;
-    env->cpuid_xlevel2 = def->xlevel2;
 
-    object_property_set_str(OBJECT(cpu), def->model_id, "model-id", &error);
+    cpu = X86_CPU(object_new(cpu_model));
+    cpu->env.cpu_model_str = cpu_model;
+
     x86_cpu_set_props(cpu, props, &error);
+    if (error) {
+        goto out;
+    }
+
+    x86_cpu_realize(OBJECT(cpu), &error);
+    if (error) {
+        goto out;
+    }
 
 out:
     QDECREF(props);
@@ -1918,9 +1868,12 @@ out:
     if (error) {
         fprintf(stderr, "%s\n", error_get_pretty(error));
         error_free(error);
-        return -1;
+        if (cpu) {
+            object_delete(OBJECT(cpu));
+        }
+        return NULL;
     }
-    return 0;
+    return cpu;
 }
 
 #if !defined(CONFIG_USER_ONLY)
