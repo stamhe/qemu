@@ -980,6 +980,43 @@ typedef struct x86_def_t {
         prop->defval_str = (char*)_val;             \
     }
 
+static void x86_qemu64_cpu_class_init(ObjectClass *oc, void *data)
+{
+    int d;
+    static char model_id[48] = "QEMU Virtual CPU version ";
+    DeviceClass *dc = DEVICE_CLASS(oc);
+
+    dc->props = g_malloc0(sizeof(cpu_x86_properties));
+    memcpy(dc->props, cpu_x86_properties, sizeof(cpu_x86_properties));
+    SET_DEFAULT_PROP_INT(dc, "level", 4);
+    SET_DEFAULT_PROP_STR(dc, "vendor", CPUID_VENDOR_AMD);
+    SET_DEFAULT_PROP_INT(dc, "family", 6);
+    SET_DEFAULT_PROP_INT(dc, "model", 2);
+    SET_DEFAULT_PROP_INT(dc, "stepping", 3);
+    d = PPRO_FEATURES | CPUID_MTRR | CPUID_CLFLUSH | CPUID_MCA | CPUID_PSE36;
+    SET_DEFAULT_FEATS(dc, env.cpuid_features, d);
+    d = CPUID_EXT_SSE3 | CPUID_EXT_CX16 | CPUID_EXT_POPCNT;
+    SET_DEFAULT_FEATS(dc, env.cpuid_ext_features, d);
+    d = (PPRO_FEATURES & CPUID_EXT2_AMD_ALIASES) | CPUID_EXT2_LM | CPUID_EXT2_SYSCALL | CPUID_EXT2_NX;
+    SET_DEFAULT_FEATS(dc, env.cpuid_ext2_features, d);
+    d = CPUID_EXT3_LAHF_LM | CPUID_EXT3_SVM | CPUID_EXT3_ABM | CPUID_EXT3_SSE4A;
+    SET_DEFAULT_FEATS(dc, env.cpuid_ext3_features, d);
+    SET_DEFAULT_PROP_INT(dc, "xlevel", 0x8000000A);
+    pstrcat(model_id, sizeof(model_id), qemu_get_version());
+    SET_DEFAULT_PROP_STR(dc, "model-id", model_id);
+}
+
+#define CPU_CLASS_NAME(model) (TYPE_X86_CPU "-" model)
+
+static const TypeInfo x86_cpu_qemu64_type_info = {
+    .name = CPU_CLASS_NAME("qemu64"),
+    .parent = TYPE_X86_CPU,
+    .instance_size = sizeof(X86CPU),
+    .abstract = false,
+    .class_size = sizeof(X86CPUClass),
+    .class_init = x86_qemu64_cpu_class_init,
+};
+
 /* maintains list of cpu model definitions
  */
 static x86_def_t *x86_defs = {NULL};
@@ -2477,7 +2514,7 @@ static const TypeInfo x86_cpu_type_info = {
     .parent = TYPE_CPU,
     .instance_size = sizeof(X86CPU),
     .instance_init = x86_cpu_initfn,
-    .abstract = false,
+    .abstract = true,
     .class_size = sizeof(X86CPUClass),
     .class_init = x86_cpu_common_class_init,
     .class_finalize = x86_cpu_common_cpu_class_finalize,
@@ -2486,6 +2523,7 @@ static const TypeInfo x86_cpu_type_info = {
 static void x86_cpu_register_types(void)
 {
     type_register_static(&x86_cpu_type_info);
+    type_register_static(&x86_cpu_qemu64_type_info);
 }
 
 type_init(x86_cpu_register_types)
