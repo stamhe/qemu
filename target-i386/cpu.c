@@ -295,7 +295,7 @@ PropertyInfo qdev_prop_vendor = {
     .set   = x86_cpuid_set_vendor,
 };
 #define DEFINE_PROP_VENDOR(_n, _s, _f)                                         \
-    DEFINE_PROP(_n, _s, _f, qdev_prop_vendor, uint32_t)
+    DEFINE_GENERIC_PROP(_n, qdev_prop_vendor)
 
 static void x86_get_hv_spinlocks(Object *obj, Visitor *v, void *opaque,
                                  const char *name, Error **errp)
@@ -587,7 +587,7 @@ PropertyInfo qdev_prop_stepping = {
     .set   = x86_cpuid_version_set_stepping,
 };
 #define DEFINE_PROP_STEPPING(_n, _s, _f)                                       \
-    DEFINE_PROP(_n, _s, _f, qdev_prop_stepping, uint32_t)
+    DEFINE_PROP_DEFAULT(_n, _s, _f, 0, qdev_prop_stepping, uint32_t)
 
 static void x86_cpuid_version_get_model(Object *obj, Visitor *v, void *opaque,
                                         const char *name, Error **errp)
@@ -631,7 +631,7 @@ PropertyInfo qdev_prop_model = {
     .set   = x86_cpuid_version_set_model,
 };
 #define DEFINE_PROP_MODEL(_n, _s, _f)                                          \
-    DEFINE_PROP(_n, _s, _f, qdev_prop_model, uint32_t)
+    DEFINE_PROP_DEFAULT(_n, _s, _f, 0, qdev_prop_model, uint32_t)
 
 static void x86_cpuid_version_get_family(Object *obj, Visitor *v, void *opaque,
                                          const char *name, Error **errp)
@@ -681,7 +681,7 @@ PropertyInfo qdev_prop_family = {
     .set   = x86_cpuid_version_set_family,
 };
 #define DEFINE_PROP_FAMILY(_n, _s, _f)                                         \
-    DEFINE_PROP(_n, _s, _f, qdev_prop_family, uint32_t)
+    DEFINE_PROP_DEFAULT(_n, _s, _f, 0, qdev_prop_family, uint32_t)
 
 #define FEAT(_name, _field, _bit, _val) \
     DEFINE_PROP_BIT(_name, X86CPU, _field, _bit, _val)
