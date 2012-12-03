@@ -1,5 +1,6 @@
 #include "hw/reset.h"
 #include "qlist.h"
+#include <glib.h>
 
 typedef struct QEMUResetEntry {
     QTAILQ_ENTRY(QEMUResetEntry) entry;
