@@ -1723,29 +1723,28 @@ int cpu_x86_register(X86CPU *cpu, const char *cpu_model)
     features = model_pieces[1];
 
     if (cpu_x86_find_by_name(def, name) < 0) {
-        goto error;
+        error_setg(&error, "Unable to find CPU definition: %s", cpu_name);
+        goto out;
     }
 
     def->kvm_features |= cpu->env.cpuid_kvm_features;
     def->ext_features |= cpu->env.cpuid_ext_features & CPUID_EXT_HYPERVISOR;
 
     if (cpu_x86_parse_featurestr(def, features) < 0) {
-        goto error;
+        error_setg(&error, "Invalid cpu_model string format: %s", cpu_model);
+        goto out;
     }
 
     cpudef_2_x86_cpu(cpu, def, &error);
 
+out:
+    g_strfreev(model_pieces);
     if (error) {
         fprintf(stderr, "%s\n", error_get_pretty(error));
         error_free(error);
         return -1;
     }
-
-    g_strfreev(model_pieces);
     return 0;
-error:
-    g_strfreev(model_pieces);
-    return -1;
 }
 
 #if !defined(CONFIG_USER_ONLY)
