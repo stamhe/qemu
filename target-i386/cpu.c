@@ -1717,9 +1717,8 @@ int cpu_x86_register(X86CPU *cpu, const char *cpu_model)
     memset(def, 0, sizeof(*def));
 
     model_pieces = g_strsplit(cpu_model, ",", 2);
-    if (!model_pieces[0]) {
-        goto error;
-    }
+    g_assert(model_pieces[0] != NULL);
+
     name = model_pieces[0];
     features = model_pieces[1];
 
