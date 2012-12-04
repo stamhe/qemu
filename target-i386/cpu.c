@@ -1432,6 +1432,42 @@ static void cpudef_2_x86_cpu(X86CPU *cpu, x86_def_t *def, Error **errp)
     object_property_set_str(OBJECT(cpu), def->model_id, "model-id", errp);
 }
 
+/*
+ * convert legacy cpumodel string to cpu_name string and features string and
+ * a uniform set of custom features that could be applied to CPU
+ * using object_property_parse().
+ * It's up to caller to free returned cpu_name, features, features_str.
+ */
+static void compat_normalize_cpu_model(const char *cpu_model, char **cpu_name,
+                                       QDict **features, char **features_str)
+{
+    gchar **feat_array;
+
+    feat_array = g_strsplit(cpu_model, ",", 2);
+    g_assert(feat_array[0] != NULL);
+    *features = qdict_new();
+    *cpu_name = g_strdup(feat_array[0]);
+    *features_str = g_strdup(feat_array[1]);
+    g_strfreev(feat_array);
+
+    return;
+}
+
+/* Set features on X86CPU object based on a QDict */
+static void cpu_x86_set_props(X86CPU *cpu, QDict *features, Error **errp)
+{
+    const QDictEntry *ent;
+
+    for (ent = qdict_first(features); ent; ent = qdict_next(features, ent)) {
+        const QString *qval = qobject_to_qstring(qdict_entry_value(ent));
+        object_property_parse(OBJECT(cpu), qstring_get_str(qval),
+                              qdict_entry_key(ent), errp);
+        if (error_is_set(errp)) {
+            return;
+        }
+    }
+}
+
 static int cpu_x86_find_by_name(x86_def_t *x86_cpu_def, const char *name)
 {
     x86_def_t *def;
@@ -1711,16 +1747,12 @@ int cpu_x86_register(X86CPU *cpu, const char *cpu_model)
 {
     x86_def_t def1, *def = &def1;
     Error *error = NULL;
-    char *name, *features;
-    gchar **model_pieces;
+    char *name = NULL, *features_str = NULL;
+    QDict *features;
 
     memset(def, 0, sizeof(*def));
 
-    model_pieces = g_strsplit(cpu_model, ",", 2);
-    g_assert(model_pieces[0] != NULL);
-
-    name = model_pieces[0];
-    features = model_pieces[1];
+    compat_normalize_cpu_model(cpu_model, &name, &features, &features_str);
 
     if (cpu_x86_find_by_name(def, name) < 0) {
         error_setg(&error, "Unable to find CPU definition: %s", name);
@@ -1730,15 +1762,22 @@ int cpu_x86_register(X86CPU *cpu, const char *cpu_model)
     def->kvm_features |= cpu->env.cpuid_kvm_features;
     def->ext_features |= cpu->env.cpuid_ext_features & CPUID_EXT_HYPERVISOR;
 
-    if (cpu_x86_parse_featurestr(def, features) < 0) {
+    if (cpu_x86_parse_featurestr(def, features_str) < 0) {
         error_setg(&error, "Invalid cpu_model string format: %s", cpu_model);
         goto out;
     }
 
     cpudef_2_x86_cpu(cpu, def, &error);
+    if (error) {
+        goto out;
+    }
+
+    cpu_x86_set_props(cpu, features, &error);
 
 out:
-    g_strfreev(model_pieces);
+    g_free(name);
+    g_free(features_str);
+    QDECREF(features);
     if (error) {
         fprintf(stderr, "%s\n", error_get_pretty(error));
         error_free(error);
