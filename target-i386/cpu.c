@@ -1253,8 +1253,6 @@ static void cpudef_2_x86_cpu(X86CPU *cpu, x86_def_t *def, Error **errp)
 
     assert(def->vendor[0]);
     object_property_set_str(OBJECT(cpu), def->vendor, "vendor", errp);
-    object_property_set_bool(OBJECT(cpu), def->vendor_override,
-                             "vendor-override", errp);
     object_property_set_int(OBJECT(cpu), def->level, "level", errp);
     object_property_set_int(OBJECT(cpu), def->family, "family", errp);
     object_property_set_int(OBJECT(cpu), def->model, "model", errp);
@@ -1323,6 +1321,16 @@ static void compat_normalize_cpu_model(const char *cpu_model, char **cpu_name,
             }
 
             g_free(cpuid_fname);
+        } else {
+            char *val = strchr(featurestr, '=');
+            if (val) {
+                *val = 0; val++;
+                if (!strcmp(featurestr, "vendor")) {
+                    qdict_put(*features, "vendor-override",
+                              qstring_from_str("on"));
+                    qdict_put(*features, featurestr, qstring_from_str(val));
+                }
+            }
         }
     }
 
@@ -1423,8 +1431,7 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features)
                 }
                 x86_cpu_def->xlevel = numvalue;
             } else if (!strcmp(featurestr, "vendor")) {
-                pstrcpy(x86_cpu_def->vendor, sizeof(x86_cpu_def->vendor), val);
-                x86_cpu_def->vendor_override = true;
+                /* compat_normalize_cpu_model() handles "vendor" parsing */
             } else if (!strcmp(featurestr, "model_id")) {
                 pstrcpy(x86_cpu_def->model_id, sizeof(x86_cpu_def->model_id),
                         val);
