@@ -1723,7 +1723,7 @@ int cpu_x86_register(X86CPU *cpu, const char *cpu_model)
     features = model_pieces[1];
 
     if (cpu_x86_find_by_name(def, name) < 0) {
-        error_setg(&error, "Unable to find CPU definition: %s", cpu_name);
+        error_setg(&error, "Unable to find CPU definition: %s", name);
         goto out;
     }
 
