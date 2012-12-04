@@ -311,3 +311,38 @@ void input_type_enum(Visitor *v, int *obj, const char *strings[],
     g_free(enum_str);
     *obj = value;
 }
+
+/**
+ * visit_type_suffixed_int:
+ * @v: visitor used for accesing external representation of value
+ * @obj: object that stores internal value
+ * @name: name of the option
+ * @suffix_factor: multiplication factor of suffix 'K'
+ * @errp: object to store error code
+ *
+ * Converts option value represented by @v taking in account multiplication
+ * factor of a suffix character that might follow number.
+ *   i.e. resulted *@obj = number * suffix.
+ *
+ * Where following suffixes are recognised:
+ *  no suffix = 1
+ *  K = @suffix_factor
+ *  M = K * @suffix_factor
+ *  G = M * @suffix_factor
+ *  T = G * @suffix_factor
+ *
+ * In case @v doesn't provide type_suffixed_int() parser, convertion
+ * fall-backs to suffix-less type_int64() parser.
+ */
+void visit_type_suffixed_int(Visitor *v, int64_t *obj, const char *name,
+                             const int suffix_factor, Error **errp)
+{
+    if (error_is_set(errp)) {
+        return;
+    }
+    if (v->type_suffixed_int) {
+        v->type_suffixed_int(v, obj, name, suffix_factor, errp);
+    } else {
+        visit_type_int64(v, obj, name, errp);
+    }
+}
