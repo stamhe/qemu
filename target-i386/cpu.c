@@ -1194,8 +1194,9 @@ static void x86_cpuid_set_tsc_freq(Object *obj, Visitor *v, void *opaque,
     const int64_t min = 0;
     const int64_t max = INT64_MAX;
     int64_t value;
+    const int kHz_factor = 1000;
 
-    visit_type_int(v, &value, name, errp);
+    visit_type_suffixed_int(v, &value, name, kHz_factor, errp);
     if (error_is_set(errp)) {
         return;
     }
