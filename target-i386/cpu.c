@@ -216,9 +216,6 @@ typedef struct model_features_t {
     FeatureWord feat_word;
 } model_features_t;
 
-int check_cpuid = 0;
-int enforce_cpuid = 0;
-
 static uint32_t kvm_default_features = (1 << KVM_FEATURE_CLOCKSOURCE) |
         (1 << KVM_FEATURE_NOP_IO_DELAY) |
         (1 << KVM_FEATURE_CLOCKSOURCE2) |
@@ -1351,6 +1348,8 @@ static Property cpu_x86_properties[] = {
     DEFINE_PROP_HV_SPINLOCKS("hv-spinlocks", HYPERV_SPINLOCK_NEVER_RETRY),
     DEFINE_PROP_BOOL("hv-relaxed", X86CPU, env.hyperv_relaxed_timing, false),
     DEFINE_PROP_BOOL("hv-vapic", X86CPU, env.hyperv_vapic, false),
+    DEFINE_PROP_BOOL("check", X86CPU, env.check_cpuid, false),
+    DEFINE_PROP_BOOL("enforce", X86CPU, env.enforce_cpuid, false),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -1487,9 +1486,9 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
                 goto out;
             }
         } else if (!strcmp(featurestr, "check")) {
-            check_cpuid = 1;
+            object_property_parse(OBJECT(cpu), "on", featurestr, errp);
         } else if (!strcmp(featurestr, "enforce")) {
-            check_cpuid = enforce_cpuid = 1;
+            object_property_parse(OBJECT(cpu), "on", featurestr, errp);
         } else if (!strcmp(featurestr, "hv_relaxed")) {
             object_property_parse(OBJECT(cpu), "on", "hv-relaxed", errp);
         } else if (!strcmp(featurestr, "hv_vapic")) {
@@ -2236,8 +2235,8 @@ static void x86_cpu_realizefn(DeviceState *dev, Error **errp)
 #ifdef CONFIG_KVM
         filter_features_for_kvm(cpu);
 #endif
-        if (check_cpuid && kvm_check_features_against_host(cpu)
-            && enforce_cpuid) {
+        if ((env->check_cpuid || env->enforce_cpuid)
+            && kvm_check_features_against_host(cpu) && env->enforce_cpuid) {
             error_setg(errp, "Host's CPU doesn't support requested features");
             return;
         }
