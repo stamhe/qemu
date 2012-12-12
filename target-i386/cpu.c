@@ -392,6 +392,66 @@ PropertyInfo qdev_prop_hv_vapic = {
     .info  = &qdev_prop_hv_vapic,                                              \
 }
 
+static bool check_cpuid;
+
+static void x86_cpuid_get_check(Object *obj, Visitor *v, void *opaque,
+                                         const char *name, Error **errp)
+{
+    visit_type_bool(v, &check_cpuid, name, errp);
+}
+
+static void x86_cpuid_set_check(Object *obj, Visitor *v, void *opaque,
+                                         const char *name, Error **errp)
+{
+    bool value;
+
+    visit_type_bool(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+    check_cpuid = value;
+}
+
+PropertyInfo qdev_prop_check = {
+    .name  = "bool",
+    .get   = x86_cpuid_get_check,
+    .set   = x86_cpuid_set_check,
+};
+#define DEFINE_PROP_CHECK(_n) {                                                \
+    .name  = _n,                                                               \
+    .info  = &qdev_prop_check,                                                 \
+}
+
+static bool enforce_cpuid;
+
+static void x86_cpuid_get_enforce(Object *obj, Visitor *v, void *opaque,
+                                         const char *name, Error **errp)
+{
+    visit_type_bool(v, &enforce_cpuid, name, errp);
+}
+
+static void x86_cpuid_set_enforce(Object *obj, Visitor *v, void *opaque,
+                                         const char *name, Error **errp)
+{
+    bool value;
+
+    visit_type_bool(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+    enforce_cpuid = value;
+}
+
+PropertyInfo qdev_prop_enforce = {
+    .name  = "boolean",
+    .get   = x86_cpuid_get_enforce,
+    .set   = x86_cpuid_set_enforce,
+};
+#define DEFINE_PROP_ENFORCE(_n) {                                              \
+    .name  = _n,                                                               \
+    .info  = &qdev_prop_enforce,                                               \
+}
+
 #define FEAT(_name, _field, _bit, _val) \
     DEFINE_PROP_BIT(_name, X86CPU, _field, _bit, _val)
 
@@ -554,6 +614,8 @@ static Property cpu_x86_properties[] = {
     DEFINE_PROP_HV_SPINLOCKS("hv_spinlocks"),
     DEFINE_PROP_HV_RELAXED("hv_relaxed"),
     DEFINE_PROP_HV_VAPIC("hv_vapic"),
+    DEFINE_PROP_CHECK("check"),
+    DEFINE_PROP_ENFORCE("enforce"),
     DEFINE_PROP_END_OF_LIST(),
  };
 
@@ -564,9 +626,6 @@ typedef struct model_features_t {
     uint32_t *host_feat;
     FeatureWord feat_word;
 } model_features_t;
-
-int check_cpuid = 0;
-int enforce_cpuid = 0;
 
 void host_cpuid(uint32_t function, uint32_t count,
                 uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
@@ -1585,9 +1644,10 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features,
                 goto error;
             }
         } else if (!strcmp(featurestr, "check")) {
-            check_cpuid = 1;
+            qdict_put(*props, featurestr, qstring_from_str("on"));
         } else if (!strcmp(featurestr, "enforce")) {
-            check_cpuid = enforce_cpuid = 1;
+            qdict_put(*props, featurestr, qstring_from_str("on"));
+            qdict_put(*props, "check", qstring_from_str("on"));
         } else if (!strcmp(featurestr, "hv_relaxed")) {
             qdict_put(*props, featurestr, qstring_from_str("on"));
         } else if (!strcmp(featurestr, "hv_vapic")) {
