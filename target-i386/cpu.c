@@ -592,6 +592,70 @@ PropertyInfo qdev_prop_hv_vapic = {
     .defval = _defval                                                          \
 }
 
+static bool check_cpuid;
+
+static void x86_cpuid_get_check(Object *obj, Visitor *v, void *opaque,
+                                         const char *name, Error **errp)
+{
+    visit_type_bool(v, &check_cpuid, name, errp);
+}
+
+static void x86_cpuid_set_check(Object *obj, Visitor *v, void *opaque,
+                                         const char *name, Error **errp)
+{
+    bool value;
+
+    visit_type_bool(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+    check_cpuid = value;
+}
+
+PropertyInfo qdev_prop_check = {
+    .name  = "boolean",
+    .get   = x86_cpuid_get_check,
+    .set   = x86_cpuid_set_check,
+};
+#define DEFINE_PROP_CHECK(_n, _defval) {                                       \
+    .name  = _n,                                                               \
+    .info  = &qdev_prop_check,                                                 \
+    .qtype = QTYPE_QBOOL,                                                      \
+    .defval = _defval                                                          \
+}
+
+static bool enforce_cpuid;
+
+static void x86_cpuid_get_enforce(Object *obj, Visitor *v, void *opaque,
+                                         const char *name, Error **errp)
+{
+    visit_type_bool(v, &enforce_cpuid, name, errp);
+}
+
+static void x86_cpuid_set_enforce(Object *obj, Visitor *v, void *opaque,
+                                         const char *name, Error **errp)
+{
+    bool value;
+
+    visit_type_bool(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+    enforce_cpuid = value;
+}
+
+PropertyInfo qdev_prop_enforce = {
+    .name  = "boolean",
+    .get   = x86_cpuid_get_enforce,
+    .set   = x86_cpuid_set_enforce,
+};
+#define DEFINE_PROP_ENFORCE(_n, _defval) {                                     \
+    .name  = _n,                                                               \
+    .info  = &qdev_prop_enforce,                                               \
+    .qtype = QTYPE_QBOOL,                                                      \
+    .defval = _defval                                                          \
+}
+
 static Property cpu_x86_properties[] = {
     DEFINE_PROP_FAMILY("family"),
     DEFINE_PROP_MODEL("model"),
@@ -604,6 +668,8 @@ static Property cpu_x86_properties[] = {
     DEFINE_PROP_HV_SPINLOCKS("hv-spinlocks", HYPERV_SPINLOCK_NEVER_RETRY),
     DEFINE_PROP_HV_RELAXED("hv-relaxed", false),
     DEFINE_PROP_HV_VAPIC("hv-vapic", false),
+    DEFINE_PROP_CHECK("check", false),
+    DEFINE_PROP_ENFORCE("enforce", false),
     DEFINE_PROP_END_OF_LIST(),
  };
 
@@ -614,9 +680,6 @@ typedef struct model_features_t {
     uint32_t *host_feat;
     FeatureWord feat_word;
 } model_features_t;
-
-int check_cpuid = 0;
-int enforce_cpuid = 0;
 
 static uint32_t kvm_default_features = (1 << KVM_FEATURE_CLOCKSOURCE) |
         (1 << KVM_FEATURE_NOP_IO_DELAY) |
@@ -1530,9 +1593,9 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
                 goto out;
             }
         } else if (!strcmp(featurestr, "check")) {
-            check_cpuid = 1;
+            object_property_parse(OBJECT(cpu), "on", featurestr, errp);
         } else if (!strcmp(featurestr, "enforce")) {
-            check_cpuid = enforce_cpuid = 1;
+            object_property_parse(OBJECT(cpu), "on", featurestr, errp);
         } else if (!strcmp(featurestr, "hv_relaxed")) {
             object_property_parse(OBJECT(cpu), "on", "hv-relaxed", errp);
         } else if (!strcmp(featurestr, "hv_vapic")) {
@@ -2279,8 +2342,8 @@ static void x86_cpu_realizefn(DeviceState *dev, Error **errp)
 #ifdef CONFIG_KVM
         filter_features_for_kvm(cpu);
 #endif
-        if (check_cpuid && kvm_check_features_against_host(cpu)
-            && enforce_cpuid) {
+        if ((check_cpuid || enforce_cpuid)
+            && kvm_check_features_against_host(cpu) && enforce_cpuid) {
             error_setg(errp, "Host's CPU doesn't support requested features");
             return;
         }
