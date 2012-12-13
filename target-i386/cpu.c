@@ -951,19 +951,20 @@ static int unavailable_host_feature(struct model_features_t *f, uint32_t mask)
  *
  * This function may be called only if KVM is enabled.
  */
-static int kvm_check_features_against_host(x86_def_t *guest_def)
+static int kvm_check_features_against_host(X86CPU *cpu)
 {
+    CPUX86State *env = &cpu->env;
     x86_def_t host_def;
     uint32_t mask;
     int rv, i;
     struct model_features_t ft[] = {
-        {&guest_def->features, &host_def.features,
+        {&env->cpuid_features, &host_def.features,
             ~0, feature_name, 0x00000000},
-        {&guest_def->ext_features, &host_def.ext_features,
+        {&env->cpuid_ext_features, &host_def.ext_features,
             ~CPUID_EXT_HYPERVISOR, ext_feature_name, 0x00000001},
-        {&guest_def->ext2_features, &host_def.ext2_features,
+        {&env->cpuid_ext2_features, &host_def.ext2_features,
             ~PPRO_FEATURES, ext2_feature_name, 0x80000000},
-        {&guest_def->ext3_features, &host_def.ext3_features,
+        {&env->cpuid_ext3_features, &host_def.ext3_features,
             ~CPUID_EXT3_SVM, ext3_feature_name, 0x80000001}};
 
     assert(kvm_enabled());
@@ -1428,12 +1429,6 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features)
     x86_cpu_def->kvm_features &= ~minus_kvm_features;
     x86_cpu_def->svm_features &= ~minus_svm_features;
     x86_cpu_def->cpuid_7_0_ebx_features &= ~minus_7_0_ebx_features;
-#ifdef CONFIG_KVM
-    if (check_cpuid && kvm_enabled()) {
-        if (kvm_check_features_against_host(x86_cpu_def) && enforce_cpuid)
-            goto error;
-    }
-#endif
     return 0;
 
 error:
@@ -2106,6 +2101,12 @@ void x86_cpu_realize(Object *obj, Error **errp)
         env->cpuid_svm_features &= TCG_SVM_FEATURES;
     } else {
 #ifdef CONFIG_KVM
+        if (check_cpuid && kvm_check_features_against_host(cpu)
+            && enforce_cpuid) {
+            error_setg(errp, "Host's CPU doesn't support requested features");
+            return;
+        }
+
         filter_features_for_kvm(cpu);
 #endif
     }
