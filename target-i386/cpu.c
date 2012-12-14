@@ -1703,7 +1703,6 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features,
             qdict_put(*props, featurestr, qstring_from_str("on"));
         } else if (!strcmp(featurestr, "enforce")) {
             qdict_put(*props, featurestr, qstring_from_str("on"));
-            qdict_put(*props, "check", qstring_from_str("on"));
         } else if (!strcmp(featurestr, "hv_relaxed")) {
             qdict_put(*props, featurestr, qstring_from_str("on"));
         } else if (!strcmp(featurestr, "hv_vapic")) {
@@ -2405,8 +2404,8 @@ void x86_cpu_realize(Object *obj, Error **errp)
 #ifdef CONFIG_KVM
         filter_features_for_kvm(cpu);
 #endif
-        if (check_cpuid && kvm_check_features_against_host(cpu)
-            && enforce_cpuid) {
+        if ((check_cpuid || enforce_cpuid)
+            && kvm_check_features_against_host(cpu) && enforce_cpuid) {
             error_setg(errp, "Host's CPU doesn't support requested features");
             return;
         }
