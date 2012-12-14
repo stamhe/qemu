@@ -1651,15 +1651,7 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features,
             g_free(cpuid_fname);
         } else if ((val = strchr(featurestr, '='))) {
             *val = 0; val++;
-            if (!strcmp(featurestr, "family")) {
-                qdict_put(*props, featurestr, qstring_from_str(val));
-            } else if (!strcmp(featurestr, "model")) {
-                qdict_put(*props, featurestr, qstring_from_str(val));
-            } else if (!strcmp(featurestr, "stepping")) {
-                qdict_put(*props, featurestr, qstring_from_str(val));
-            } else if (!strcmp(featurestr, "level")) {
-                qdict_put(*props, featurestr, qstring_from_str(val));
-            } else if (!strcmp(featurestr, "xlevel")) {
+            if (!strcmp(featurestr, "xlevel")) {
                 char *err;
                 QString *s;
                 numvalue = strtoul(val, &err, 0);
@@ -1675,8 +1667,6 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features,
                 s = qstring_new();
                 qstring_append_int(s, numvalue);
                 qdict_put(*props, featurestr, s);
-            } else if (!strcmp(featurestr, "vendor")) {
-                qdict_put(*props, featurestr, qstring_from_str(val));
             } else if (!strcmp(featurestr, "model_id")) {
                 qdict_put(*props, "model-id", qstring_from_str(val));
             } else if (!strcmp(featurestr, "tsc_freq")) {
@@ -1693,11 +1683,8 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features,
                 s = qstring_new();
                 qstring_append_int(s, tsc_freq);
                 qdict_put(*props, "tsc-frequency", s);
-            } else if (!strcmp(featurestr, "hv_spinlocks")) {
-                qdict_put(*props, featurestr, qstring_from_str(val));
             } else {
-                fprintf(stderr, "unrecognized feature %s\n", featurestr);
-                goto error;
+                qdict_put(*props, featurestr, qstring_from_str(val));
             }
         } else {
             qdict_put(*props, featurestr, qstring_from_str("on"));
