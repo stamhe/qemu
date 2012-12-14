@@ -1699,17 +1699,8 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features,
                 fprintf(stderr, "unrecognized feature %s\n", featurestr);
                 goto error;
             }
-        } else if (!strcmp(featurestr, "check")) {
-            qdict_put(*props, featurestr, qstring_from_str("on"));
-        } else if (!strcmp(featurestr, "enforce")) {
-            qdict_put(*props, featurestr, qstring_from_str("on"));
-        } else if (!strcmp(featurestr, "hv_relaxed")) {
-            qdict_put(*props, featurestr, qstring_from_str("on"));
-        } else if (!strcmp(featurestr, "hv_vapic")) {
-            qdict_put(*props, featurestr, qstring_from_str("on"));
         } else {
-            fprintf(stderr, "feature string `%s' not in format (+feature|-feature|feature=xyz)\n", featurestr);
-            goto error;
+            qdict_put(*props, featurestr, qstring_from_str("on"));
         }
     }
     g_strfreev(feat_array);
