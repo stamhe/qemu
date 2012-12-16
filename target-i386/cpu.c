@@ -284,7 +284,7 @@ typedef struct x86_def_t {
     uint32_t kvm_features, svm_features;
     uint32_t xlevel;
     char model_id[48];
-    int vendor_override;
+    bool vendor_override;
     /* Store the results of Centaur's CPUID instructions */
     uint32_t ext4_features;
     uint32_t xlevel2;
@@ -859,7 +859,7 @@ static void kvm_cpu_fill_host(x86_def_t *x86_cpu_def)
                 kvm_arch_get_supported_cpuid(s, 0x80000001, 0, R_ECX);
 
     cpu_x86_fill_model_id(x86_cpu_def->model_id);
-    x86_cpu_def->vendor_override = 0;
+    x86_cpu_def->vendor_override = false;
 
     /* Call Centaur's CPUID instruction. */
     if (!strcmp(x86_cpu_def->vendor, CPUID_VENDOR_VIA)) {
@@ -1329,7 +1329,7 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features,
                 x86_cpu_def->xlevel = numvalue;
             } else if (!strcmp(featurestr, "vendor")) {
                 pstrcpy(x86_cpu_def->vendor, sizeof(x86_cpu_def->vendor), val);
-                x86_cpu_def->vendor_override = 1;
+                x86_cpu_def->vendor_override = true;
             } else if (!strcmp(featurestr, "model_id")) {
                 pstrcpy(x86_cpu_def->model_id, sizeof(x86_cpu_def->model_id),
                         val);
