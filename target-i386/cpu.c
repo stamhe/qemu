@@ -1163,7 +1163,6 @@ static void x86_cpuid_set_vendor(Object *obj, const char *value,
         env->cpuid_vendor2 |= ((uint8_t)value[i + 4]) << (8 * i);
         env->cpuid_vendor3 |= ((uint8_t)value[i + 8]) << (8 * i);
     }
-    env->cpuid_vendor_override = 1;
 }
 
 static char *x86_cpuid_get_model_id(Object *obj, Error **errp)
