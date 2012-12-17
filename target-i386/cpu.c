@@ -1338,7 +1338,9 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features,
                             ", fixup will be depricated in future versions\n");
                     numvalue += 0x80000000;
                 }
-                x86_cpu_def->xlevel = numvalue;
+                val = g_strdup_printf("%u", numvalue);
+                qdict_put(*props, featurestr, qstring_from_str(val));
+                g_free(val);
             } else if (!strcmp(featurestr, "vendor")) {
                 qdict_put(*props, featurestr, qstring_from_str(val));
             } else if (!strcmp(featurestr, "model_id")) {
