@@ -1328,8 +1328,7 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features,
                 qdict_put(*props, featurestr, qstring_from_str(val));
                 x86_cpu_def->vendor_override = true;
             } else if (!strcmp(featurestr, "model_id")) {
-                pstrcpy(x86_cpu_def->model_id, sizeof(x86_cpu_def->model_id),
-                        val);
+                qdict_put(*props, "model-id", qstring_from_str(val));
             } else if (!strcmp(featurestr, "tsc_freq")) {
                 qdict_put(*props, "tsc-frequency", qstring_from_str(val));
             } else if (!strcmp(featurestr, "hv_spinlocks")) {
