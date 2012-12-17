@@ -1371,6 +1371,7 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features,
             } else if (!strcmp(featurestr, "tsc_freq")) {
                 int64_t tsc_freq;
                 char *err;
+                QString *s;
 
                 tsc_freq = strtosz_suffix_unit(val, &err,
                                                STRTOSZ_DEFSUFFIX_B, 1000);
@@ -1378,7 +1379,9 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features,
                     fprintf(stderr, "bad numerical value %s\n", val);
                     goto error;
                 }
-                x86_cpu_def->tsc_khz = tsc_freq / 1000;
+                s = qstring_new();
+                qstring_append_int(s, tsc_freq);
+                qdict_put(*props, "tsc-frequency", s);
             } else if (!strcmp(featurestr, "hv_spinlocks")) {
                 char *err;
                 numvalue = strtoul(val, &err, 0);
