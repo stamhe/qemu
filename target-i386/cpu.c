@@ -45,6 +45,18 @@
 #include "hw/apic_internal.h"
 #endif
 
+static void x86_cpu_vendor_words2str(char *dst, uint32_t vendor1,
+                                    uint32_t vendor2, uint32_t vendor3)
+{
+    int i;
+    for (i = 0; i < 4; i++) {
+        dst[i] = vendor1 >> (8 * i);
+        dst[i + 4] = vendor2 >> (8 * i);
+        dst[i + 8] = vendor3 >> (8 * i);
+    }
+    dst[CPUID_VENDOR_SZ] = '\0';
+}
+
 /* feature flags taken from "Intel Processor Identification and the CPUID
  * Instruction" and AMD's "CPUID Specification".  In cases of disagreement
  * between feature naming conventions, aliases may be added.
@@ -1213,15 +1225,10 @@ static char *x86_cpuid_get_vendor(Object *obj, Error **errp)
     X86CPU *cpu = X86_CPU(obj);
     CPUX86State *env = &cpu->env;
     char *value;
-    int i;
 
     value = (char *)g_malloc(CPUID_VENDOR_SZ + 1);
-    for (i = 0; i < 4; i++) {
-        value[i    ] = env->cpuid_vendor1 >> (8 * i);
-        value[i + 4] = env->cpuid_vendor2 >> (8 * i);
-        value[i + 8] = env->cpuid_vendor3 >> (8 * i);
-    }
-    value[CPUID_VENDOR_SZ] = '\0';
+    x86_cpu_vendor_words2str(value, env->cpuid_vendor1, env->cpuid_vendor2,
+                            env->cpuid_vendor3);
     return value;
 }
 
