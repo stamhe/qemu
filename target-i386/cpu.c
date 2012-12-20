@@ -45,6 +45,18 @@
 #include "hw/apic_internal.h"
 #endif
 
+static void x86_cpu_vendor_words2str(char *dst, uint32_t vendor1,
+                                     uint32_t vendor2, uint32_t vendor3)
+{
+    int i;
+    for (i = 0; i < 4; i++) {
+        dst[i] = vendor1 >> (8 * i);
+        dst[i + 4] = vendor2 >> (8 * i);
+        dst[i + 8] = vendor3 >> (8 * i);
+    }
+    dst[CPUID_VENDOR_SZ] = '\0';
+}
+
 /* feature flags taken from "Intel Processor Identification and the CPUID
  * Instruction" and AMD's "CPUID Specification".  In cases of disagreement
  * between feature naming conventions, aliases may be added.
@@ -341,7 +353,7 @@ typedef struct x86_def_t {
     struct x86_def_t *next;
     const char *name;
     uint32_t level;
-    uint32_t vendor1, vendor2, vendor3;
+    char vendor[CPUID_VENDOR_SZ + 1];
     int family;
     int model;
     int stepping;
@@ -406,9 +418,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "qemu64",
         .level = 4,
-        .vendor1 = CPUID_VENDOR_AMD_1,
-        .vendor2 = CPUID_VENDOR_AMD_2,
-        .vendor3 = CPUID_VENDOR_AMD_3,
+        .vendor = CPUID_VENDOR_AMD,
         .family = 6,
         .model = 2,
         .stepping = 3,
@@ -425,9 +435,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "phenom",
         .level = 5,
-        .vendor1 = CPUID_VENDOR_AMD_1,
-        .vendor2 = CPUID_VENDOR_AMD_2,
-        .vendor3 = CPUID_VENDOR_AMD_3,
+        .vendor = CPUID_VENDOR_AMD,
         .family = 16,
         .model = 2,
         .stepping = 3,
@@ -453,9 +461,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "core2duo",
         .level = 10,
-        .vendor1 = CPUID_VENDOR_INTEL_1,
-        .vendor2 = CPUID_VENDOR_INTEL_2,
-        .vendor3 = CPUID_VENDOR_INTEL_3,
+        .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
         .model = 15,
         .stepping = 11,
@@ -474,9 +480,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "kvm64",
         .level = 5,
-        .vendor1 = CPUID_VENDOR_INTEL_1,
-        .vendor2 = CPUID_VENDOR_INTEL_2,
-        .vendor3 = CPUID_VENDOR_INTEL_3,
+        .vendor = CPUID_VENDOR_INTEL,
         .family = 15,
         .model = 6,
         .stepping = 1,
@@ -500,9 +504,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "qemu32",
         .level = 4,
-        .vendor1 = CPUID_VENDOR_INTEL_1,
-        .vendor2 = CPUID_VENDOR_INTEL_2,
-        .vendor3 = CPUID_VENDOR_INTEL_3,
+        .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
         .model = 3,
         .stepping = 3,
@@ -513,9 +515,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "kvm32",
         .level = 5,
-        .vendor1 = CPUID_VENDOR_INTEL_1,
-        .vendor2 = CPUID_VENDOR_INTEL_2,
-        .vendor3 = CPUID_VENDOR_INTEL_3,
+        .vendor = CPUID_VENDOR_INTEL,
         .family = 15,
         .model = 6,
         .stepping = 1,
@@ -530,9 +530,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "coreduo",
         .level = 10,
-        .vendor1 = CPUID_VENDOR_INTEL_1,
-        .vendor2 = CPUID_VENDOR_INTEL_2,
-        .vendor3 = CPUID_VENDOR_INTEL_3,
+        .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
         .model = 14,
         .stepping = 8,
@@ -548,9 +546,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "486",
         .level = 1,
-        .vendor1 = CPUID_VENDOR_INTEL_1,
-        .vendor2 = CPUID_VENDOR_INTEL_2,
-        .vendor3 = CPUID_VENDOR_INTEL_3,
+        .vendor = CPUID_VENDOR_INTEL,
         .family = 4,
         .model = 0,
         .stepping = 0,
@@ -560,9 +556,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "pentium",
         .level = 1,
-        .vendor1 = CPUID_VENDOR_INTEL_1,
-        .vendor2 = CPUID_VENDOR_INTEL_2,
-        .vendor3 = CPUID_VENDOR_INTEL_3,
+        .vendor = CPUID_VENDOR_INTEL,
         .family = 5,
         .model = 4,
         .stepping = 3,
@@ -572,9 +566,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "pentium2",
         .level = 2,
-        .vendor1 = CPUID_VENDOR_INTEL_1,
-        .vendor2 = CPUID_VENDOR_INTEL_2,
-        .vendor3 = CPUID_VENDOR_INTEL_3,
+        .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
         .model = 5,
         .stepping = 2,
@@ -584,9 +576,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "pentium3",
         .level = 2,
-        .vendor1 = CPUID_VENDOR_INTEL_1,
-        .vendor2 = CPUID_VENDOR_INTEL_2,
-        .vendor3 = CPUID_VENDOR_INTEL_3,
+        .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
         .model = 7,
         .stepping = 3,
@@ -596,9 +586,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "athlon",
         .level = 2,
-        .vendor1 = CPUID_VENDOR_AMD_1,
-        .vendor2 = CPUID_VENDOR_AMD_2,
-        .vendor3 = CPUID_VENDOR_AMD_3,
+        .vendor = CPUID_VENDOR_AMD,
         .family = 6,
         .model = 2,
         .stepping = 3,
@@ -612,9 +600,7 @@ static x86_def_t builtin_x86_defs[] = {
         .name = "n270",
         /* original is on level 10 */
         .level = 5,
-        .vendor1 = CPUID_VENDOR_INTEL_1,
-        .vendor2 = CPUID_VENDOR_INTEL_2,
-        .vendor3 = CPUID_VENDOR_INTEL_3,
+        .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
         .model = 28,
         .stepping = 2,
@@ -633,9 +619,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "Conroe",
         .level = 2,
-        .vendor1 = CPUID_VENDOR_INTEL_1,
-        .vendor2 = CPUID_VENDOR_INTEL_2,
-        .vendor3 = CPUID_VENDOR_INTEL_3,
+        .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
         .model = 2,
         .stepping = 3,
@@ -653,9 +637,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "Penryn",
         .level = 2,
-        .vendor1 = CPUID_VENDOR_INTEL_1,
-        .vendor2 = CPUID_VENDOR_INTEL_2,
-        .vendor3 = CPUID_VENDOR_INTEL_3,
+        .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
         .model = 2,
         .stepping = 3,
@@ -674,9 +656,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "Nehalem",
         .level = 2,
-        .vendor1 = CPUID_VENDOR_INTEL_1,
-        .vendor2 = CPUID_VENDOR_INTEL_2,
-        .vendor3 = CPUID_VENDOR_INTEL_3,
+        .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
         .model = 2,
         .stepping = 3,
@@ -695,9 +675,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "Westmere",
         .level = 11,
-        .vendor1 = CPUID_VENDOR_INTEL_1,
-        .vendor2 = CPUID_VENDOR_INTEL_2,
-        .vendor3 = CPUID_VENDOR_INTEL_3,
+        .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
         .model = 44,
         .stepping = 1,
@@ -717,9 +695,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "SandyBridge",
         .level = 0xd,
-        .vendor1 = CPUID_VENDOR_INTEL_1,
-        .vendor2 = CPUID_VENDOR_INTEL_2,
-        .vendor3 = CPUID_VENDOR_INTEL_3,
+        .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
         .model = 42,
         .stepping = 1,
@@ -742,9 +718,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "Haswell",
         .level = 0xd,
-        .vendor1 = CPUID_VENDOR_INTEL_1,
-        .vendor2 = CPUID_VENDOR_INTEL_2,
-        .vendor3 = CPUID_VENDOR_INTEL_3,
+        .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
         .model = 60,
         .stepping = 1,
@@ -772,9 +746,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "Opteron_G1",
         .level = 5,
-        .vendor1 = CPUID_VENDOR_AMD_1,
-        .vendor2 = CPUID_VENDOR_AMD_2,
-        .vendor3 = CPUID_VENDOR_AMD_3,
+        .vendor = CPUID_VENDOR_AMD,
         .family = 15,
         .model = 6,
         .stepping = 1,
@@ -796,9 +768,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "Opteron_G2",
         .level = 5,
-        .vendor1 = CPUID_VENDOR_AMD_1,
-        .vendor2 = CPUID_VENDOR_AMD_2,
-        .vendor3 = CPUID_VENDOR_AMD_3,
+        .vendor = CPUID_VENDOR_AMD,
         .family = 15,
         .model = 6,
         .stepping = 1,
@@ -822,9 +792,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "Opteron_G3",
         .level = 5,
-        .vendor1 = CPUID_VENDOR_AMD_1,
-        .vendor2 = CPUID_VENDOR_AMD_2,
-        .vendor3 = CPUID_VENDOR_AMD_3,
+        .vendor = CPUID_VENDOR_AMD,
         .family = 15,
         .model = 6,
         .stepping = 1,
@@ -850,9 +818,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "Opteron_G4",
         .level = 0xd,
-        .vendor1 = CPUID_VENDOR_AMD_1,
-        .vendor2 = CPUID_VENDOR_AMD_2,
-        .vendor3 = CPUID_VENDOR_AMD_3,
+        .vendor = CPUID_VENDOR_AMD,
         .family = 21,
         .model = 1,
         .stepping = 2,
@@ -882,9 +848,7 @@ static x86_def_t builtin_x86_defs[] = {
     {
         .name = "Opteron_G5",
         .level = 0xd,
-        .vendor1 = CPUID_VENDOR_AMD_1,
-        .vendor2 = CPUID_VENDOR_AMD_2,
-        .vendor3 = CPUID_VENDOR_AMD_3,
+        .vendor = CPUID_VENDOR_AMD,
         .family = 21,
         .model = 2,
         .stepping = 0,
@@ -945,9 +909,7 @@ static void kvm_cpu_fill_host(x86_def_t *x86_cpu_def)
 
     x86_cpu_def->name = "host";
     host_cpuid(0x0, 0, &eax, &ebx, &ecx, &edx);
-    x86_cpu_def->vendor1 = ebx;
-    x86_cpu_def->vendor2 = edx;
-    x86_cpu_def->vendor3 = ecx;
+    x86_cpu_vendor_words2str(x86_cpu_def->vendor, ebx, edx, ecx);
 
     host_cpuid(0x1, 0, &eax, &ebx, &ecx, &edx);
     x86_cpu_def->family = ((eax >> 8) & 0x0F) + ((eax >> 20) & 0xFF);
@@ -975,9 +937,8 @@ static void kvm_cpu_fill_host(x86_def_t *x86_cpu_def)
     x86_cpu_def->vendor_override = 0;
 
     /* Call Centaur's CPUID instruction. */
-    if (x86_cpu_def->vendor1 == CPUID_VENDOR_VIA_1 &&
-        x86_cpu_def->vendor2 == CPUID_VENDOR_VIA_2 &&
-        x86_cpu_def->vendor3 == CPUID_VENDOR_VIA_3) {
+    if (!strncmp(x86_cpu_def->vendor, CPUID_VENDOR_VIA,
+        sizeof(x86_cpu_def->vendor))) {
         host_cpuid(0xC0000000, 0, &eax, &ebx, &ecx, &edx);
         eax = kvm_arch_get_supported_cpuid(s, 0xC0000000, 0, R_EAX);
         if (eax >= 0xC0000001) {
@@ -1213,15 +1174,10 @@ static char *x86_cpuid_get_vendor(Object *obj, Error **errp)
     X86CPU *cpu = X86_CPU(obj);
     CPUX86State *env = &cpu->env;
     char *value;
-    int i;
 
     value = (char *)g_malloc(CPUID_VENDOR_SZ + 1);
-    for (i = 0; i < 4; i++) {
-        value[i    ] = env->cpuid_vendor1 >> (8 * i);
-        value[i + 4] = env->cpuid_vendor2 >> (8 * i);
-        value[i + 8] = env->cpuid_vendor3 >> (8 * i);
-    }
-    value[CPUID_VENDOR_SZ] = '\0';
+    x86_cpu_vendor_words2str(value, env->cpuid_vendor1, env->cpuid_vendor2,
+                             env->cpuid_vendor3);
     return value;
 }
 
@@ -1341,7 +1297,6 @@ static int cpu_x86_find_by_name(x86_def_t *x86_cpu_def, const char *name)
  */
 static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features)
 {
-    unsigned int i;
     char *featurestr; /* Single 'key=value" string being parsed */
     /* Features to be added */
     FeatureWordArray plus_features = { 0 };
@@ -1405,18 +1360,7 @@ static int cpu_x86_parse_featurestr(x86_def_t *x86_cpu_def, char *features)
                 }
                 x86_cpu_def->xlevel = numvalue;
             } else if (!strcmp(featurestr, "vendor")) {
-                if (strlen(val) != 12) {
-                    fprintf(stderr, "vendor string must be 12 chars long\n");
-                    goto error;
-                }
-                x86_cpu_def->vendor1 = 0;
-                x86_cpu_def->vendor2 = 0;
-                x86_cpu_def->vendor3 = 0;
-                for(i = 0; i < 4; i++) {
-                    x86_cpu_def->vendor1 |= ((uint8_t)val[i    ]) << (8 * i);
-                    x86_cpu_def->vendor2 |= ((uint8_t)val[i + 4]) << (8 * i);
-                    x86_cpu_def->vendor3 |= ((uint8_t)val[i + 8]) << (8 * i);
-                }
+                pstrcpy(x86_cpu_def->vendor, sizeof(x86_cpu_def->vendor), val);
                 x86_cpu_def->vendor_override = 1;
             } else if (!strcmp(featurestr, "model_id")) {
                 pstrcpy(x86_cpu_def->model_id, sizeof(x86_cpu_def->model_id),
@@ -1611,10 +1555,8 @@ int cpu_x86_register(X86CPU *cpu, const char *cpu_model)
         error_setg(&error, "Invalid cpu_model string format: %s", cpu_model);
         goto out;
     }
-    assert(def->vendor1);
-    env->cpuid_vendor1 = def->vendor1;
-    env->cpuid_vendor2 = def->vendor2;
-    env->cpuid_vendor3 = def->vendor3;
+    assert(def->vendor[0]);
+    object_property_set_str(OBJECT(cpu), def->vendor, "vendor", &error);
     env->cpuid_vendor_override = def->vendor_override;
     object_property_set_int(OBJECT(cpu), def->level, "level", &error);
     object_property_set_int(OBJECT(cpu), def->family, "family", &error);
