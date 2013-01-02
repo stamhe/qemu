@@ -1849,7 +1849,7 @@ X86CPU *cpu_x86_init(const char *cpu_model)
         goto out;
     }
 
-    cpu = X86_CPU(object_new(cpu_model));
+    cpu=X86_CPU(qdev_create(NULL, CPU_CLASS_NAME("qemu64")));
     cpu->env.cpu_model_str = cpu_model;
 
     x86_cpu_set_props(cpu, props, &error);
@@ -1857,6 +1857,7 @@ X86CPU *cpu_x86_init(const char *cpu_model)
         goto out;
     }
 
+    qdev_init_nofail(DEVICE(cpu));
     x86_cpu_realize(OBJECT(cpu), &error);
     if (error) {
         goto out;
