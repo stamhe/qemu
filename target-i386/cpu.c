@@ -1858,7 +1858,6 @@ X86CPU *cpu_x86_init(const char *cpu_model)
     }
 
     qdev_init_nofail(DEVICE(cpu));
-    x86_cpu_realize(OBJECT(cpu), &error);
     if (error) {
         goto out;
     }
@@ -2364,7 +2363,7 @@ static void x86_cpu_apic_init(X86CPU *cpu, Error **errp)
 }
 #endif
 
-void x86_cpu_realize(Object *obj, Error **errp)
+void x86_cpu_realize(DeviceState *obj, Error **errp)
 {
     X86CPU *cpu = X86_CPU(obj);
     CPUX86State *env = &cpu->env;
@@ -2454,6 +2453,7 @@ static void x86_cpu_common_class_init(ObjectClass *oc, void *data)
     dc->props = g_malloc0(sizeof(cpu_x86_properties));
     memcpy(dc->props, cpu_x86_properties, sizeof(cpu_x86_properties));
 
+    dc->realize = x86_cpu_realize;
 }
 
 static void x86_cpu_common_cpu_class_finalize(ObjectClass *oc, void *data)
