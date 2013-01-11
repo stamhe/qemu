@@ -125,7 +125,7 @@ static void set_bool(Object *obj, Visitor *v, void *opaque,
     Property *prop = opaque;
     bool *ptr = qdev_get_prop_ptr(dev, prop);
 
-    if (dev->state != DEV_STATE_CREATED) {
+    if (dev->realized) {
         error_setg(errp,
                    "Setting property (%s) on not created Device in forbidden",
                    name);
