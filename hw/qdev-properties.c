@@ -831,10 +831,10 @@ Property *qdev_prop_find(DeviceClass *dc, const char *name)
     return NULL;
 }
 
-const Property *qdev_prop_find_bit(const DeviceClass *dc, const int offset,
+Property *qdev_prop_find_bit(const DeviceClass *dc, const int offset,
                                    const uint8_t bitnr)
 {
-    const Property *prop;
+    Property *prop;
 
     QDEV_CLASS_FOREACH(dc, dc) {
         QDEV_PROP_FOREACH(prop, dc) {

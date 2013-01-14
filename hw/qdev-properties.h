@@ -152,7 +152,7 @@ void error_set_from_qdev_prop_error(Error **errp, int ret, DeviceState *dev,
 void qdev_property_add_static(DeviceState *dev, Property *prop, Error **errp);
 
 Property *qdev_prop_find(DeviceClass *dc, const char *name);
-const Property *qdev_prop_find_bit(const DeviceClass *dc, const int offset,
+Property *qdev_prop_find_bit(const DeviceClass *dc, const int offset,
                                    const uint8_t bitnr);
 
 #define QDEV_PROP_FOREACH(_var, _class)                                       \
