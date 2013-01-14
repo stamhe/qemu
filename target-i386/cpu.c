@@ -2450,9 +2450,6 @@ static void x86_cpu_common_class_init(ObjectClass *oc, void *data)
     xcc->parent_reset = cc->reset;
     cc->reset = x86_cpu_reset;
 
-    dc->props = g_malloc0(sizeof(cpu_x86_properties));
-    memcpy(dc->props, cpu_x86_properties, sizeof(cpu_x86_properties));
-
     dc->realize = x86_cpu_realize;
 }
 
