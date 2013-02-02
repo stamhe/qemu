@@ -735,6 +735,69 @@ static int kvm_get_supported_msrs(KVMState *s)
     return ret;
 }
 
+
+static void kvm_host_cpu_class_init(ObjectClass *oc, void *data)
+{
+    X86CPUClass *xcc = X86_CPU_CLASS(oc);
+    x86_def_t *x86_cpu_def = &xcc->info;
+    KVMState *s = kvm_state;
+    uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;
+    int i;
+
+    xcc->info.name = "host";
+    host_cpuid(0x0, 0, &eax, &ebx, &ecx, &edx);
+    x86_cpu_vendor_words2str(x86_cpu_def->vendor, ebx, edx, ecx);
+
+    host_cpuid(0x1, 0, &eax, &ebx, &ecx, &edx);
+    x86_cpu_def->family = ((eax >> 8) & 0x0F) + ((eax >> 20) & 0xFF);
+    x86_cpu_def->model = ((eax >> 4) & 0x0F) | ((eax & 0xF0000) >> 12);
+    x86_cpu_def->stepping = eax & 0x0F;
+
+    x86_cpu_def->level = kvm_arch_get_supported_cpuid(s, 0x0, 0, R_EAX);
+    x86_cpu_def->features = kvm_arch_get_supported_cpuid(s, 0x1, 0, R_EDX);
+    x86_cpu_def->ext_features = kvm_arch_get_supported_cpuid(s, 0x1, 0, R_ECX);
+
+    if (x86_cpu_def->level >= 7) {
+        x86_cpu_def->cpuid_7_0_ebx_features =
+                    kvm_arch_get_supported_cpuid(s, 0x7, 0, R_EBX);
+    } else {
+        x86_cpu_def->cpuid_7_0_ebx_features = 0;
+    }
+
+    x86_cpu_def->xlevel = kvm_arch_get_supported_cpuid(s, 0x80000000, 0, R_EAX);
+    x86_cpu_def->ext2_features =
+                kvm_arch_get_supported_cpuid(s, 0x80000001, 0, R_EDX);
+    x86_cpu_def->ext3_features =
+                kvm_arch_get_supported_cpuid(s, 0x80000001, 0, R_ECX);
+
+    for (i = 0; i < 3; i++) {
+        host_cpuid(0x80000002 + i, 0, &eax, &ebx, &ecx, &edx);
+        memcpy(xcc->info.model_id + i * 16 +  0, &eax, 4);
+        memcpy(xcc->info.model_id + i * 16 +  4, &ebx, 4);
+        memcpy(xcc->info.model_id + i * 16 +  8, &ecx, 4);
+        memcpy(xcc->info.model_id + i * 16 + 12, &edx, 4);
+    }
+
+    /* Call Centaur's CPUID instruction. */
+    if (!strcmp(x86_cpu_def->vendor, CPUID_VENDOR_VIA)) {
+        host_cpuid(0xC0000000, 0, &eax, &ebx, &ecx, &edx);
+        eax = kvm_arch_get_supported_cpuid(s, 0xC0000000, 0, R_EAX);
+        if (eax >= 0xC0000001) {
+            /* Support VIA max extended level */
+            x86_cpu_def->xlevel2 = eax;
+            host_cpuid(0xC0000001, 0, &eax, &ebx, &ecx, &edx);
+            x86_cpu_def->ext4_features =
+                    kvm_arch_get_supported_cpuid(s, 0xC0000001, 0, R_EDX);
+        }
+    }
+
+    /* Other KVM-specific feature fields: */
+    x86_cpu_def->svm_features =
+        kvm_arch_get_supported_cpuid(s, 0x8000000A, 0, R_EDX);
+    x86_cpu_def->kvm_features =
+        kvm_arch_get_supported_cpuid(s, KVM_CPUID_FEATURES, 0, R_EAX);
+}
+
 int kvm_arch_init(KVMState *s)
 {
     QemuOptsList *list = qemu_find_opts("machine");
@@ -742,6 +805,12 @@ int kvm_arch_init(KVMState *s)
     uint64_t shadow_mem;
     int ret;
     struct utsname utsname;
+
+    static const TypeInfo host_x86_cpu_type_info = {
+        .name = TYPE_HOST_X86_CPU,
+        .parent = TYPE_X86_CPU,
+        .class_init = kvm_host_cpu_class_init,
+    };
 
     ret = kvm_get_supported_msrs(s);
     if (ret < 0) {
@@ -797,6 +866,9 @@ int kvm_arch_init(KVMState *s)
             }
         }
     }
+
+    type_register(&host_x86_cpu_type_info);
+
     return 0;
 }
 
