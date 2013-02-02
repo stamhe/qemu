@@ -1516,23 +1516,13 @@ static void filter_features_for_kvm(X86CPU *cpu)
 }
 #endif
 
-static int cpu_x86_register(X86CPU *cpu, const char *cpu_model)
+static int cpu_x86_register(X86CPU *cpu, const char *name)
 {
     CPUX86State *env = &cpu->env;
     x86_def_t def1, *def = &def1;
     Error *error = NULL;
-    char *name, *features;
-    gchar **model_pieces;
 
     memset(def, 0, sizeof(*def));
-
-    model_pieces = g_strsplit(cpu_model, ",", 2);
-    if (!model_pieces[0]) {
-        error_setg(&error, "Invalid/empty CPU model name");
-        goto out;
-    }
-    name = model_pieces[0];
-    features = model_pieces[1];
 
     if (cpu_x86_find_by_name(def, name) < 0) {
         error_setg(&error, "Unable to find CPU definition: %s", name);
@@ -1561,13 +1551,8 @@ static int cpu_x86_register(X86CPU *cpu, const char *cpu_model)
     env->cpuid_xlevel2 = def->xlevel2;
 
     object_property_set_str(OBJECT(cpu), def->model_id, "model-id", &error);
-    if (error) {
-        goto out;
-    }
 
-    cpu_x86_parse_featurestr(cpu, features, &error);
 out:
-    g_strfreev(model_pieces);
     if (error) {
         fprintf(stderr, "%s\n", error_get_pretty(error));
         error_free(error);
@@ -1578,24 +1563,48 @@ out:
 
 X86CPU *cpu_x86_init(const char *cpu_model)
 {
-    X86CPU *cpu;
+    X86CPU *cpu = NULL;
     CPUX86State *env;
+    gchar **model_pieces;
+    char *name, *features;
     Error *error = NULL;
+
+    model_pieces = g_strsplit(cpu_model, ",", 2);
+    if (!model_pieces[0]) {
+        error_setg(&error, "Invalid/empty CPU model name");
+        goto out;
+    }
+    name = model_pieces[0];
+    features = model_pieces[1];
 
     cpu = X86_CPU(object_new(TYPE_X86_CPU));
     env = &cpu->env;
     env->cpu_model_str = cpu_model;
 
-    if (cpu_x86_register(cpu, cpu_model) < 0) {
-        object_unref(OBJECT(cpu));
-        return NULL;
+    if (cpu_x86_register(cpu, name) < 0) {
+        error_setg(&error, "Unable to register CPU: %s", name);
+        goto out;
+    }
+
+    cpu_x86_parse_featurestr(cpu, features, &error);
+    if (error) {
+        goto out;
     }
 
     object_property_set_bool(OBJECT(cpu), true, "realized", &error);
     if (error) {
+        goto out;
+    }
+
+out:
+    g_strfreev(model_pieces);
+    if (error) {
+        fprintf(stderr, "%s\n", error_get_pretty(error));
         error_free(error);
-        object_unref(OBJECT(cpu));
-        return NULL;
+        if (cpu != NULL) {
+            object_unref(OBJECT(cpu));
+            cpu = NULL;
+        }
     }
     return cpu;
 }
