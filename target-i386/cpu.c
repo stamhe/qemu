@@ -220,17 +220,12 @@ typedef struct model_features_t {
 int check_cpuid = 0;
 int enforce_cpuid = 0;
 
-static uint32_t kvm_default_features = (1 << KVM_FEATURE_CLOCKSOURCE) |
-        (1 << KVM_FEATURE_NOP_IO_DELAY) |
-        (1 << KVM_FEATURE_CLOCKSOURCE2) |
-        (1 << KVM_FEATURE_ASYNC_PF) |
-        (1 << KVM_FEATURE_STEAL_TIME) |
-        (1 << KVM_FEATURE_PV_EOI) |
-        (1 << KVM_FEATURE_CLOCKSOURCE_STABLE_BIT);
-
+/* TODO: replace it with compat properties when feature bits
+ * are converted into static properties */
+bool x86_cpu_no_pv_eoi;
 void disable_kvm_pv_eoi(void)
 {
-    kvm_default_features &= ~(1UL << KVM_FEATURE_PV_EOI);
+    x86_cpu_no_pv_eoi = true;
 }
 
 void host_cpuid(uint32_t function, uint32_t count,
@@ -2061,9 +2056,6 @@ static void x86_cpu_initfn(Object *obj)
     env->cpuid_ext3_features = def->ext3_features;
     object_property_set_int(OBJECT(cpu), def->xlevel, "xlevel", NULL);
     env->cpuid_kvm_features = def->kvm_features;
-    if (kvm_enabled()) {
-        env->cpuid_kvm_features |= kvm_default_features;
-    }
     env->cpuid_svm_features = def->svm_features;
     env->cpuid_ext4_features = def->ext4_features;
     env->cpuid_7_0_ebx_features = def->cpuid_7_0_ebx_features;
@@ -2107,6 +2099,10 @@ static void x86_cpu_def_class_init(ObjectClass *oc, void *data)
          */
         memcpy(xcc->info.vendor, hostcc->info.vendor,
                sizeof(xcc->info.vendor));
+        xcc->info.kvm_features = xcc->info.kvm_features;
+        if (x86_cpu_no_pv_eoi) {
+            xcc->info.kvm_features &= ~(1UL << KVM_FEATURE_PV_EOI);
+        }
     }
 
     /* Look for specific models that have the QEMU version in .model_id */

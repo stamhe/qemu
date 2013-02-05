@@ -1246,6 +1246,8 @@ void do_smm_enter(CPUX86State *env1);
 
 void cpu_report_tpr_access(CPUX86State *env, TPRAccess access);
 
+/* TODO: convert to compat_props */
+extern bool x86_cpu_no_pv_eoi;
 void disable_kvm_pv_eoi(void);
 
 /* Return name of 32-bit register, from a R_* constant */
