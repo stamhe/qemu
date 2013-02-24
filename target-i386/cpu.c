@@ -33,8 +33,6 @@
 #include "qapi/visitor.h"
 #include "sysemu/arch_init.h"
 
-#include "hyperv.h"
-
 #include "hw/hw.h"
 #if defined(CONFIG_KVM)
 #include <linux/kvm_para.h>
@@ -1422,12 +1420,19 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
                 object_property_parse(OBJECT(cpu), num, "tsc-frequency", errp);
             } else if (!strcmp(featurestr, "hv-spinlocks")) {
                 char *err;
+                const int min = 0xFFF;
                 numvalue = strtoul(val, &err, 0);
                 if (!*val || *err) {
                     error_setg(errp, "bad numerical value %s", val);
                     goto out;
                 }
-                hyperv_set_spinlock_retries(numvalue);
+                if (numvalue < min) {
+                    fprintf(stderr, "hv-spinlocks value shall always be >= 0x%x"
+                            ", fixup will be removed in future versions\n",
+                            min);
+                    numvalue = min;
+                }
+                env->hyperv_spinlock_attempts = numvalue;
             } else {
                 error_setg(errp, "unrecognized feature %s", featurestr);
                 goto out;
@@ -1437,9 +1442,9 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
         } else if (!strcmp(featurestr, "enforce")) {
             check_cpuid = enforce_cpuid = 1;
         } else if (!strcmp(featurestr, "hv_relaxed")) {
-            hyperv_enable_relaxed_timing(true);
+            env->hyperv_relaxed_timing = true;
         } else if (!strcmp(featurestr, "hv_vapic")) {
-            hyperv_enable_vapic_recommended(true);
+            env->hyperv_vapic = true;
         } else {
             error_setg(errp, "feature string `%s' not in format (+feature|"
                        "-feature|feature=xyz)", featurestr);
@@ -1592,6 +1597,7 @@ static void cpu_x86_register(X86CPU *cpu, const char *name, Error **errp)
         def->kvm_features |= kvm_default_features;
     }
     def->ext_features |= CPUID_EXT_HYPERVISOR;
+    env->hyperv_spinlock_attempts = HYPERV_SPINLOCK_NEVER_RETRY;
 
     object_property_set_str(OBJECT(cpu), def->vendor, "vendor", errp);
     object_property_set_int(OBJECT(cpu), def->level, "level", errp);
