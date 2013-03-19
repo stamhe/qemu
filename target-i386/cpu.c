@@ -41,6 +41,7 @@
 #endif
 
 #include "sysemu/sysemu.h"
+#include "hw/qdev-properties.h"
 #ifndef CONFIG_USER_ONLY
 #include "hw/xen.h"
 #include "hw/sysbus.h"
@@ -1271,6 +1272,77 @@ static void x86_cpuid_set_tsc_freq(Object *obj, Visitor *v, void *opaque,
     cpu->env.tsc_khz = value / 1000;
 }
 
+/**
+ * x86_cpu_is_cpu_exist:
+ * @obj - root of QOM tree to start search from
+ * @opaque - pointer to int64_t variable with searched apic_id
+ *
+ * Search for CPU with APIC ID specified by @opaque.
+ *
+ * Returns: 1 - CPU is found, 0 - CPU isn't found
+ */
+int x86_cpu_is_cpu_exist(Object *obj, void *opaque)
+{
+    int64_t apic_id = *(int64_t *)opaque;
+    Object *cpu_obj = object_dynamic_cast(obj, TYPE_X86_CPU);
+
+    if (cpu_obj) {
+        X86CPU *cpu = X86_CPU(cpu_obj);
+        if (cpu->env.cpuid_apic_id == apic_id) {
+            return 1;
+        }
+    }
+    return object_child_foreach(obj, x86_cpu_is_cpu_exist, opaque);
+}
+
+static void x86_cpuid_get_apic_id(Object *obj, Visitor *v, void *opaque,
+                                  const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    int64_t value = cpu->env.cpuid_apic_id;
+
+    visit_type_int(v, &value, name, errp);
+}
+
+static void x86_cpuid_set_apic_id(Object *obj, Visitor *v, void *opaque,
+                                  const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    const int64_t min = 0;
+    const int64_t max = UINT32_MAX;
+    int64_t value;
+
+    visit_type_int(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+    if (value < min || value > max) {
+        error_setg(errp, "Property %s.%s doesn't take value %" PRId64
+                   " (minimum: %" PRId64 ", maximum: %" PRId64 ")" ,
+                   object_get_typename(obj), name, value, min, max);
+        return;
+    }
+
+    if (x86_cpu_is_cpu_exist(qdev_get_machine(), &value)) {
+        error_setg(errp, "CPU with APIC ID %" PRIi64 " exists", value);
+        return;
+    }
+    cpu->env.cpuid_apic_id = value;
+}
+
+static PropertyInfo qdev_prop_apic_id = {
+    .name  = "uint32",
+    .get   = x86_cpuid_get_apic_id,
+    .set   = x86_cpuid_set_apic_id,
+};
+#define DEFINE_PROP_APIC_ID(_n)                                                \
+    DEFINE_PROP(_n, X86CPU, env.cpuid_apic_id, qdev_prop_apic_id, uint32_t)
+
+static Property cpu_x86_properties[] = {
+    DEFINE_PROP_APIC_ID("apic-id"),
+    DEFINE_PROP_END_OF_LIST(),
+};
+
 static int cpu_x86_find_by_name(x86_def_t *x86_cpu_def, const char *name)
 {
     x86_def_t *def;
@@ -2277,6 +2349,7 @@ static void x86_cpu_common_class_init(ObjectClass *oc, void *data)
     DeviceClass *dc = DEVICE_CLASS(oc);
 
     xcc->parent_realize = dc->realize;
+    dc->props = cpu_x86_properties;
     dc->realize = x86_cpu_realizefn;
 
     xcc->parent_reset = cc->reset;

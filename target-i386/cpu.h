@@ -1268,4 +1268,6 @@ const char *get_register_name_32(unsigned int reg);
 uint32_t x86_cpu_apic_id_from_index(unsigned int cpu_index);
 void enable_compat_apic_id_mode(void);
 
+int x86_cpu_is_cpu_exist(Object *obj, void *opaque);
+
 #endif /* CPU_I386_H */
