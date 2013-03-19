@@ -1562,17 +1562,16 @@ static void cpu_x86_register(X86CPU *cpu, const char *name, Error **errp)
     object_property_set_str(OBJECT(cpu), def->model_id, "model-id", errp);
 }
 
-X86CPU *cpu_x86_init(const char *cpu_model)
+X86CPU *cpu_x86_create(const char *cpu_model, Error **errp)
 {
     X86CPU *cpu = NULL;
     CPUX86State *env;
     gchar **model_pieces;
     char *name, *features;
-    Error *error = NULL;
 
     model_pieces = g_strsplit(cpu_model, ",", 2);
     if (!model_pieces[0]) {
-        error_setg(&error, "Invalid/empty CPU model name");
+        error_setg(errp, "Invalid/empty CPU model name");
         goto out;
     }
     name = model_pieces[0];
@@ -1582,23 +1581,34 @@ X86CPU *cpu_x86_init(const char *cpu_model)
     env = &cpu->env;
     env->cpu_model_str = cpu_model;
 
-    cpu_x86_register(cpu, name, &error);
-    if (error) {
+    cpu_x86_register(cpu, name, errp);
+    if (error_is_set(errp)) {
         goto out;
     }
 
-    cpu_x86_parse_featurestr(cpu, features, &error);
-    if (error) {
-        goto out;
-    }
-
-    object_property_set_bool(OBJECT(cpu), true, "realized", &error);
-    if (error) {
+    cpu_x86_parse_featurestr(cpu, features, errp);
+    if (error_is_set(errp)) {
         goto out;
     }
 
 out:
     g_strfreev(model_pieces);
+    return cpu;
+}
+
+X86CPU *cpu_x86_init(const char *cpu_model)
+{
+    Error *error = NULL;
+    X86CPU *cpu;
+
+    cpu = cpu_x86_create(cpu_model, &error);
+    if (error) {
+        goto out;
+    }
+
+    object_property_set_bool(OBJECT(cpu), true, "realized", &error);
+
+out:
     if (error) {
         fprintf(stderr, "%s\n", error_get_pretty(error));
         error_free(error);
