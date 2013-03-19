@@ -2260,6 +2260,11 @@ out:
         error_propagate(errp, local_err);
         return;
     }
+
+    if (dev->hotplugged) {
+        cpu_synchronize_post_init(env);
+        resume_vcpu(CPU(cpu));
+    }
 }
 
 /* Enables contiguous-apic-ID mode, for compatibility */

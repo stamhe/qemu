@@ -1,11 +1,14 @@
 #ifndef QEMU_CPUS_H
 #define QEMU_CPUS_H
 
+#include "qom/cpu.h"
+
 /* cpus.c */
 void qemu_init_cpu_loop(void);
 void resume_all_vcpus(void);
 void pause_all_vcpus(void);
 void cpu_stop_current(void);
+void resume_vcpu(CPUState *cpu);
 
 void cpu_synchronize_all_states(void);
 void cpu_synchronize_all_post_reset(void);
