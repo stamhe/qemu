@@ -1723,6 +1723,20 @@ void vm_start(void)
     }
 }
 
+/* CPU hot-plug notifiers */
+static NotifierList cpu_add_notifiers =
+    NOTIFIER_LIST_INITIALIZER(cpu_add_notifiers);
+
+void qemu_register_cpu_add_notifier(Notifier *notifier)
+{
+    notifier_list_add(&cpu_add_notifiers, notifier);
+}
+
+void qemu_system_cpu_hotplug_request(uint32_t id)
+{
+    notifier_list_notify(&cpu_add_notifiers, &id);
+}
+
 /* reset/shutdown handler */
 
 typedef struct QEMUResetEntry {
