@@ -156,6 +156,8 @@ void drive_hot_add(Monitor *mon, const QDict *qdict);
 void qemu_register_cpu_add_notifier(Notifier *notifier);
 void qemu_system_cpu_hotplug_request(uint32_t id);
 
+void do_cpu_hot_add(const int64_t id, Error **errp);
+
 /* pcie aer error injection */
 void pcie_aer_inject_error_print(Monitor *mon, const QObject *data);
 int do_pcie_aer_inject_error(Monitor *mon,

@@ -108,6 +108,18 @@ void qmp_cpu(int64_t index, Error **errp)
     /* Just do nothing */
 }
 
+void qmp_cpu_set(int64_t id, const char *status, Error **errp)
+{
+    if (!strcmp(status, "online")) {
+        do_cpu_hot_add(id, errp);
+    } else if (!strcmp(status, "offline")) {
+        error_setg(errp, "Unplug is not implemented");
+    } else {
+        error_setg(errp, "Invalid parameter '%s'", status);
+        return;
+    }
+}
+
 #ifndef CONFIG_VNC
 /* If VNC support is enabled, the "true" query-vnc command is
    defined in the VNC subsystem */

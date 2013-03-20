@@ -1385,6 +1385,15 @@
 { 'command': 'cpu', 'data': {'index': 'int'} }
 
 ##
+# @cpu_set
+#
+# Sets specified cpu to online/ofline mode
+#
+# Notes: semantics is : cpu_set id=x status=online|offline
+##
+{ 'command': 'cpu_set', 'data': {'id': 'int', 'status': 'str'} }
+
+##
 # @memsave:
 #
 # Save a portion of guest memory to a file.

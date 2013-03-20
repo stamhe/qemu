@@ -385,6 +385,32 @@ Note: CPUs' indexes are obtained with the 'query-cpus' command.
 EQMP
 
     {
+        .name       = "cpu_set",
+        .args_type  = "id:i,status:s",
+        .mhandler.cmd_new = qmp_marshal_input_cpu_set,
+    },
+
+SQMP
+cpu_set
+-------
+
+Sets virtual cpu to online/ofline state
+
+Arguments:
+
+- "id": virtual cpu id (json-int)
+- "status": desired state of cpu, online/offline (json-string)
+
+Example:
+
+-> { "execute": "cpu_set",
+             "arguments": { "id": 2,
+                            "status": "online" } }
+<- { "return": {} }
+
+EQMP
+
+    {
         .name       = "memsave",
         .args_type  = "val:l,size:i,filename:s,cpu:i?",
         .mhandler.cmd_new = qmp_marshal_input_memsave,
