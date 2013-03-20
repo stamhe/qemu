@@ -12,6 +12,8 @@
 #include "sysemu/cpus.h"
 #include "sysemu/kvm.h"
 #include "hw/apic_internal.h"
+#include "migration/vmstate.h"
+#include "exec/address-spaces.h"
 
 #define APIC_DEFAULT_ADDRESS    0xfee00000
 
@@ -49,7 +51,7 @@ typedef struct GuestROMState {
 } QEMU_PACKED GuestROMState;
 
 typedef struct VAPICROMState {
-    SysBusDevice busdev;
+    ICCDevice busdev;
     MemoryRegion io;
     MemoryRegion rom;
     uint32_t state;
@@ -581,7 +583,7 @@ static void vapic_map_rom_writable(VAPICROMState *s)
     size_t rom_size;
     uint8_t *ram;
 
-    as = sysbus_address_space(&s->busdev);
+    as = get_system_memory();
 
     if (s->rom_mapped_writable) {
         memory_region_del_subregion(as, &s->rom);
@@ -693,13 +695,12 @@ static const MemoryRegionOps vapic_ops = {
     .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
-static int vapic_init(SysBusDevice *dev)
+static int vapic_init(ICCDevice *dev)
 {
     VAPICROMState *s = VAPIC_DEVICE(dev);
 
     memory_region_init_io(&s->io, &vapic_ops, s, "kvmvapic", 2);
-    sysbus_add_io(dev, VAPIC_IO_PORT, &s->io);
-    sysbus_init_ioports(dev, VAPIC_IO_PORT, 2);
+    memory_region_add_subregion(get_system_io(), VAPIC_IO_PORT, &s->io);
 
     option_rom[nb_option_roms].name = "kvmvapic.bin";
     option_rom[nb_option_roms].bootindex = -1;
@@ -801,7 +802,7 @@ static const VMStateDescription vmstate_vapic = {
 
 static void vapic_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *sc = SYS_BUS_DEVICE_CLASS(klass);
+    ICCDeviceClass *sc = ICC_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
     dc->no_user = 1;
@@ -812,7 +813,7 @@ static void vapic_class_init(ObjectClass *klass, void *data)
 
 static const TypeInfo vapic_type = {
     .name          = TYPE_VAPIC_DEVICE,
-    .parent        = TYPE_SYS_BUS_DEVICE,
+    .parent        = TYPE_ICC_DEVICE,
     .instance_size = sizeof(VAPICROMState),
     .class_init    = vapic_class_init,
 };

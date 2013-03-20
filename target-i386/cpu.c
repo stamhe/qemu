@@ -42,10 +42,11 @@
 
 #include "sysemu/sysemu.h"
 #include "hw/qdev-properties.h"
+#include "hw/icc_bus.h"
 #ifndef CONFIG_USER_ONLY
 #include "hw/xen.h"
-#include "hw/sysbus.h"
 #include "hw/apic_internal.h"
+#include "exec/address-spaces.h"
 #endif
 
 static void x86_cpu_vendor_words2str(char *dst, uint32_t vendor1,
@@ -1640,6 +1641,7 @@ X86CPU *cpu_x86_create(const char *cpu_model, Error **errp)
     CPUX86State *env;
     gchar **model_pieces;
     char *name, *features;
+    BusState *icc_bus = get_icc_bus();
 
     model_pieces = g_strsplit(cpu_model, ",", 2);
     if (!model_pieces[0]) {
@@ -1650,6 +1652,10 @@ X86CPU *cpu_x86_create(const char *cpu_model, Error **errp)
     features = model_pieces[1];
 
     cpu = X86_CPU(object_new(TYPE_X86_CPU));
+    if (icc_bus) {
+        qdev_set_parent_bus(DEVICE(cpu), icc_bus);
+        object_unref(OBJECT(cpu));
+    }
     env = &cpu->env;
     env->cpu_model_str = cpu_model;
 
@@ -2145,7 +2151,7 @@ static void x86_cpu_apic_create(X86CPU *cpu, Error **errp)
         apic_type = "xen-apic";
     }
 
-    env->apic_state = qdev_try_create(NULL, apic_type);
+    env->apic_state = qdev_try_create(get_icc_bus(), apic_type);
     if (env->apic_state == NULL) {
         error_setg(errp, "APIC device '%s' could not be created", apic_type);
         return;
@@ -2176,11 +2182,12 @@ static void x86_cpu_apic_init(X86CPU *cpu, Error **errp)
 
     /* XXX: mapping more APICs at the same memory location */
     if (apic_mapped == 0) {
+        APICCommonState *apic = APIC_COMMON(env->apic_state);
         /* NOTE: the APIC is directly connected to the CPU - it is not
            on the global memory bus. */
         /* XXX: what if the base changes? */
-        sysbus_mmio_map_overlap(SYS_BUS_DEVICE(env->apic_state), 0,
-                                MSI_ADDR_BASE, 0x1000);
+        memory_region_add_subregion_overlap(get_system_memory(), MSI_ADDR_BASE,
+                                            &apic->io_memory, 0x1000);
         apic_mapped = 1;
     }
 }
@@ -2356,6 +2363,7 @@ static void x86_cpu_common_class_init(ObjectClass *oc, void *data)
     xcc->parent_realize = dc->realize;
     dc->props = cpu_x86_properties;
     dc->realize = x86_cpu_realizefn;
+    dc->bus_type = TYPE_ICC_BUS;
 
     xcc->parent_reset = cc->reset;
     cc->reset = x86_cpu_reset;

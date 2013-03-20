@@ -21,6 +21,7 @@
 #include "hw/apic_internal.h"
 #include "trace.h"
 #include "sysemu/kvm.h"
+#include "qdev.h"
 
 static int apic_irq_delivered;
 bool apic_report_tpr_access;
@@ -282,9 +283,10 @@ static int apic_load_old(QEMUFile *f, void *opaque, int version_id)
     return 0;
 }
 
-static int apic_init_common(SysBusDevice *dev)
+static int apic_init_common(ICCDevice *dev)
 {
     APICCommonState *s = APIC_COMMON(dev);
+    DeviceState *d = DEVICE(dev);
     APICCommonClass *info;
     static DeviceState *vapic;
     static int apic_no;
@@ -297,12 +299,14 @@ static int apic_init_common(SysBusDevice *dev)
     info = APIC_COMMON_GET_CLASS(s);
     info->init(s);
 
-    sysbus_init_mmio(dev, &s->io_memory);
 
     /* Note: We need at least 1M to map the VAPIC option ROM */
     if (!vapic && s->vapic_control & VAPIC_ENABLE_MASK &&
         ram_size >= 1024 * 1024) {
-        vapic = sysbus_create_simple("kvmvapic", -1, NULL);
+        vapic = qdev_try_create(d->parent_bus, "kvmvapic");
+        if ((vapic == NULL) || (qdev_init(vapic) != 0)) {
+            return -1;
+        }
     }
     s->vapic = vapic;
     if (apic_report_tpr_access && info->enable_tpr_reporting) {
@@ -375,7 +379,7 @@ static Property apic_properties_common[] = {
 
 static void apic_common_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *sc = SYS_BUS_DEVICE_CLASS(klass);
+    ICCDeviceClass *sc = ICC_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
     dc->vmsd = &vmstate_apic_common;
@@ -387,7 +391,7 @@ static void apic_common_class_init(ObjectClass *klass, void *data)
 
 static const TypeInfo apic_common_type = {
     .name = TYPE_APIC_COMMON,
-    .parent = TYPE_SYS_BUS_DEVICE,
+    .parent = TYPE_ICC_DEVICE,
     .instance_size = sizeof(APICCommonState),
     .class_size = sizeof(APICCommonClass),
     .class_init = apic_common_class_init,
