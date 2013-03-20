@@ -677,6 +677,13 @@ void rtc_set_memory(ISADevice *dev, int addr, int val)
         s->cmos_data[addr] = val;
 }
 
+int rtc_get_memory(ISADevice *dev, int addr)
+{
+    RTCState *s = DO_UPCAST(RTCState, dev, dev);
+    assert(addr >= 0 && addr <= 127);
+    return s->cmos_data[addr];
+}
+
 static void rtc_set_date_from_host(ISADevice *dev)
 {
     RTCState *s = DO_UPCAST(RTCState, dev, dev);

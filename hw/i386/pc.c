@@ -337,6 +337,21 @@ static void pc_cmos_init_late(void *opaque)
     qemu_unregister_reset(pc_cmos_init_late, opaque);
 }
 
+typedef struct rtc_cpu_hotplug_arg {
+    ISADevice *rtc_state;
+    Notifier cpu_added_notifier;
+} rtc_cpu_hotplug_arg;
+
+static void rtc_notify_cpu_added(Notifier *notifier, void *data)
+{
+    rtc_cpu_hotplug_arg *arg = container_of(notifier, rtc_cpu_hotplug_arg,
+                                           cpu_added_notifier);
+    ISADevice *s = arg->rtc_state;
+
+    /* increment the number of CPUs */
+    rtc_set_memory(s, 0x5f, rtc_get_memory(s, 0x5f) + 1);
+}
+
 void pc_cmos_init(ram_addr_t ram_size, ram_addr_t above_4g_mem_size,
                   const char *boot_device,
                   ISADevice *floppy, BusState *idebus0, BusState *idebus1,
@@ -345,6 +360,7 @@ void pc_cmos_init(ram_addr_t ram_size, ram_addr_t above_4g_mem_size,
     int val, nb, i;
     FDriveType fd_type[2] = { FDRIVE_DRV_NONE, FDRIVE_DRV_NONE };
     static pc_cmos_init_late_arg arg;
+    static rtc_cpu_hotplug_arg cpu_hotplug_cb;
 
     /* various important CMOS locations needed by PC/Bochs bios */
 
@@ -383,6 +399,10 @@ void pc_cmos_init(ram_addr_t ram_size, ram_addr_t above_4g_mem_size,
 
     /* set the number of CPU */
     rtc_set_memory(s, 0x5f, smp_cpus - 1);
+    /* init CPU hotplug notifier */
+    cpu_hotplug_cb.rtc_state = s;
+    cpu_hotplug_cb.cpu_added_notifier.notify = rtc_notify_cpu_added;
+    qemu_register_cpu_added_notifier(&cpu_hotplug_cb.cpu_added_notifier);
 
     /* set boot devices, and disable floppy signature check if requested */
     if (set_boot_dev(s, boot_device, fd_bootchk)) {
