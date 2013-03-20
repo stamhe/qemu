@@ -82,6 +82,7 @@ typedef struct RTCState {
     Notifier clock_reset_notifier;
     LostTickPolicy lost_tick_policy;
     Notifier suspend_notifier;
+    Notifier cpu_added_notifier;
 } RTCState;
 
 static void rtc_set_time(RTCState *s);
@@ -759,6 +760,14 @@ static void rtc_notify_suspend(Notifier *notifier, void *data)
     rtc_set_memory(&s->dev, 0xF, 0xFE);
 }
 
+static void rtc_notify_cpu_added(Notifier *notifier, void *data)
+{
+    RTCState *s = container_of(notifier, RTCState, cpu_added_notifier);
+
+    /* increment the number of CPUs */
+    s->cmos_data[0x5f] += 1;
+}
+
 static void rtc_reset(void *opaque)
 {
     RTCState *s = opaque;
@@ -851,6 +860,9 @@ static int rtc_initfn(ISADevice *dev)
 
     s->suspend_notifier.notify = rtc_notify_suspend;
     qemu_register_suspend_notifier(&s->suspend_notifier);
+
+    s->cpu_added_notifier.notify = rtc_notify_cpu_added;
+    qemu_register_cpu_added_notifier(&s->cpu_added_notifier);
 
     memory_region_init_io(&s->io, &cmos_ops, s, "rtc", 2);
     isa_register_ioport(dev, &s->io, base);
