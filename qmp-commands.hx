@@ -407,6 +407,29 @@ Example:
 EQMP
 
     {
+        .name       = "cpu-add",
+        .args_type  = "id:i",
+        .mhandler.cmd_new = qmp_marshal_input_cpu_add,
+    },
+
+SQMP
+cpu-add
+-------
+
+Adds virtual cpu
+
+Arguments:
+
+- "id": cpu id (json-int)
+
+Example:
+
+-> { "execute": "cpu-add", "arguments": { "id": 2 } }
+<- { "return": {} }
+
+EQMP
+
+    {
         .name       = "memsave",
         .args_type  = "val:l,size:i,filename:s,cpu:i?",
         .mhandler.cmd_new = qmp_marshal_input_memsave,

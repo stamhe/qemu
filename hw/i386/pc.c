@@ -53,6 +53,7 @@
 #include "qemu/bitmap.h"
 #include "qemu/config-file.h"
 #include "hw/i386/icc_bus.h"
+#include "hw/boards.h"
 
 /* debug PC/ISA interrupts */
 //#define DEBUG_IRQ
@@ -896,6 +897,23 @@ static X86CPU *pc_new_cpu(const char *cpu_model, int64_t apic_id,
     return cpu;
 }
 
+static void do_cpu_hot_add(const int64_t id, Error **errp)
+{
+    if (cpu_exists(id)) {
+        error_setg(errp, "Unable to add CPU with APIC ID: 0x%" PRIx64
+                   ", it already exists", id);
+        return;
+    }
+
+    if (id >= pc_apic_id_limit(max_cpus)) {
+        error_setg(errp, "Unable to add CPU with APIC ID: 0x%" PRIx64
+                   ", max allowed: 0x%x", id, pc_apic_id_limit(max_cpus) - 1);
+        return;
+    }
+
+    pc_new_cpu(machine_args->cpu_model, id, NULL, errp);
+}
+
 void pc_cpus_init(const char *cpu_model)
 {
     int i;
@@ -910,7 +928,9 @@ void pc_cpus_init(const char *cpu_model)
 #else
         cpu_model = "qemu32";
 #endif
+        machine_args->cpu_model = cpu_model;
     }
+    current_machine->hot_add_cpu = do_cpu_hot_add;
 
     ib = SYS_BUS_DEVICE(object_resolve_path_type("icc-bridge",
                                                  TYPE_ICC_BRIDGE, NULL));
