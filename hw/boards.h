@@ -18,6 +18,8 @@ typedef struct QEMUMachineInitArgs {
     const char *cpu_model;
 } QEMUMachineInitArgs;
 
+extern QEMUMachineInitArgs *machine_args;
+
 typedef void QEMUMachineInitFunc(QEMUMachineInitArgs *args);
 
 typedef void QEMUMachineResetFunc(void);
@@ -43,6 +45,7 @@ typedef struct QEMUMachine {
     GlobalProperty *compat_props;
     struct QEMUMachine *next;
     const char *hw_version;
+    void (*hot_add_cpu)(const int64_t id, Error **errp);
 } QEMUMachine;
 
 int qemu_register_machine(QEMUMachine *m);
