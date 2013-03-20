@@ -2271,6 +2271,7 @@ out:
     if (dev->hotplugged) {
         cpu_synchronize_post_init(env);
         resume_vcpu(CPU(cpu));
+        qemu_system_cpu_hotplug_request(env->cpuid_apic_id);
     }
 }
 

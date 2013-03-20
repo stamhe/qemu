@@ -867,6 +867,19 @@ static void pc_new_cpu(const char *cpu_model, int64_t apic_id, Error **errp)
 {
     X86CPU *cpu;
 
+    if (apic_id >= pc_apic_id_limit(max_cpus)) {
+        error_setg(errp, "Unable to add CPU with ID: 0x%" PRIx64
+                   ", max allowed ID: 0x%x", apic_id,
+                   pc_apic_id_limit(max_cpus) - 1);
+        return;
+    }
+
+    if (x86_cpu_is_cpu_exist(qdev_get_machine(), &apic_id)) {
+        error_setg(errp, "Unable to add CPU with ID: 0x%" PRIx64
+                   ", it's already exists", apic_id);
+        return;
+    }
+
     cpu = cpu_x86_create(cpu_model, errp);
     if (!cpu) {
         return;
@@ -882,6 +895,8 @@ static void pc_new_cpu(const char *cpu_model, int64_t apic_id, Error **errp)
     }
 }
 
+static const char *saved_cpu_model;
+
 void pc_cpus_init(const char *cpu_model)
 {
     int i;
@@ -895,6 +910,8 @@ void pc_cpus_init(const char *cpu_model)
         cpu_model = "qemu32";
 #endif
     }
+    saved_cpu_model = cpu_model;
+
 
     for (i = 0; i < smp_cpus; i++) {
         pc_new_cpu(cpu_model, x86_cpu_apic_id_from_index(i), &error);
@@ -904,6 +921,11 @@ void pc_cpus_init(const char *cpu_model)
             exit(1);
         }
     }
+}
+
+void do_cpu_hot_add(const int64_t id, Error **errp)
+{
+    pc_new_cpu(saved_cpu_model, id, errp);
 }
 
 void pc_acpi_init(const char *default_dsdt)
