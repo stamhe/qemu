@@ -76,6 +76,12 @@ obj-y += disas.o
 obj-$(CONFIG_GDBSTUB_XML) += gdbstub-xml.o
 
 #########################################################
+# user emulator target
+ifdef CONFIG_USER_ONLY
+obj-y += kvm-stub.o
+endif #CONFIG_USER_ONLY
+
+#########################################################
 # Linux user emulator target
 
 ifdef CONFIG_LINUX_USER
