@@ -58,8 +58,13 @@ static ObjectClass *cpu_common_class_by_name(const char *cpu_model)
 
 static void cpu_common_realizefn(DeviceState *dev, Error **errp)
 {
+    CPUClass *klass = CPU_GET_CLASS(dev);
+
     if (dev->hotplugged) {
         cpu_synchronize_post_init(CPU(dev));
+        if (klass->resume != NULL) {
+            klass->resume(CPU(dev));
+        }
     }
 }
 

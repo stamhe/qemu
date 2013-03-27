@@ -973,6 +973,13 @@ void pause_all_vcpus(void)
     }
 }
 
+static void resume_vcpu(CPUState *cpu)
+{
+    cpu->stop = false;
+    cpu->stopped = false;
+    qemu_cpu_kick(cpu);
+}
+
 void resume_all_vcpus(void)
 {
     CPUArchState *penv = first_cpu;
@@ -980,9 +987,7 @@ void resume_all_vcpus(void)
     qemu_clock_enable(vm_clock, true);
     while (penv) {
         CPUState *pcpu = ENV_GET_CPU(penv);
-        pcpu->stop = false;
-        pcpu->stopped = false;
-        qemu_cpu_kick(pcpu);
+        resume_vcpu(pcpu);
         penv = penv->next_cpu;
     }
 }
@@ -1042,7 +1047,11 @@ void qemu_init_vcpu(void *_env)
 {
     CPUArchState *env = _env;
     CPUState *cpu = ENV_GET_CPU(env);
+    CPUClass *klass = CPU_GET_CLASS(cpu);
 
+    if (klass->resume == NULL) {
+        klass->resume = resume_vcpu;
+    }
     cpu->nr_cores = smp_cores;
     cpu->nr_threads = smp_threads;
     cpu->stopped = true;
