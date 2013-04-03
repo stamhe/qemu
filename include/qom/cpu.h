@@ -46,7 +46,7 @@ typedef struct CPUState CPUState;
  * @reset: Callback to reset the #CPUState to its initial state.
  * @do_interrupt: Callback for interrupt handling.
  * @resume: Callback for putting CPU in runable state
- * @get_firmware_id: Callback for getting arch depended CPU id
+ * @get_firmware_id: Callback for getting arch depended CPU ID
  * @vmsd: State description for migration.
  *
  * Represents a CPU family or model.
@@ -61,7 +61,7 @@ typedef struct CPUClass {
     void (*reset)(CPUState *cpu);
     void (*do_interrupt)(CPUState *cpu);
     void (*resume)(CPUState *cpu);
-    void (*get_firmware_id)(CPUState *cpu);
+    int64_t (*get_firmware_id)(CPUState *cpu);
 
     const struct VMStateDescription *vmsd;
 } CPUClass;

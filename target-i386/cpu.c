@@ -2269,6 +2269,14 @@ static void x86_cpu_initfn(Object *obj)
     }
 }
 
+static int64_t x86_cpu_get_firmware_id(CPUState *cpu)
+{
+    X86CPU *x86cpu = X86_CPU(cpu);
+    CPUX86State *env = &x86cpu->env;
+
+    return env->cpuid_apic_id;
+}
+
 static void x86_cpu_common_class_init(ObjectClass *oc, void *data)
 {
     X86CPUClass *xcc = X86_CPU_CLASS(oc);
@@ -2283,6 +2291,8 @@ static void x86_cpu_common_class_init(ObjectClass *oc, void *data)
 
     cc->do_interrupt = x86_cpu_do_interrupt;
     cpu_class_set_vmsd(cc, &vmstate_x86_cpu);
+
+    cc->get_firmware_id = x86_cpu_get_firmware_id;
 }
 
 static const TypeInfo x86_cpu_type_info = {
