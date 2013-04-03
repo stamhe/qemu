@@ -227,6 +227,16 @@ void run_on_cpu(CPUState *cpu, void (*func)(void *data), void *data);
  */
 CPUState *qemu_get_cpu(int index);
 
+/**
+ * cpu_exists:
+ * @id - guest exposed CPU ID to lookup
+ *
+ * Search for CPU with specified ID.
+ *
+ * Returns: true - CPU is found, false - CPU isn't found
+ */
+bool cpu_exists(int64_t id);
+
 #ifndef CONFIG_USER_ONLY
 
 typedef void (*CPUInterruptHandler)(CPUState *, int);
