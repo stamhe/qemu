@@ -24,6 +24,27 @@
 #include "qemu/notify.h"
 #include "sysemu/sysemu.h"
 
+static int cpu_exist_cb(Object *obj, void *opaque)
+{
+    int64_t id = *(int64_t *)opaque;
+    Object *cpu_obj = object_dynamic_cast(obj, TYPE_CPU);
+
+    if (cpu_obj) {
+        CPUState *cpu = CPU(cpu_obj);
+        CPUClass *klass = CPU_GET_CLASS(cpu);
+
+        if (klass->get_arch_id(cpu) == id) {
+            return 1;
+        }
+    }
+    return object_child_foreach(obj, cpu_exist_cb, opaque);
+}
+
+bool cpu_exists(int64_t id)
+{
+   return cpu_exist_cb(qdev_get_machine(), &id) ? true : false;
+}
+
 /* CPU hot-plug notifiers */
 static NotifierList cpu_added_notifiers =
     NOTIFIER_LIST_INITIALIZER(cpu_add_notifiers);
