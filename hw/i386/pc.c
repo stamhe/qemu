@@ -870,7 +870,8 @@ void pc_acpi_smi_interrupt(void *opaque, int irq, int level)
     }
 }
 
-static X86CPU *pc_new_cpu(const char *cpu_model, int64_t apic_id, Error **errp)
+static X86CPU *pc_new_cpu(const char *cpu_model, int64_t apic_id,
+                          SysBusDevice *icc_bridge, Error **errp)
 {
     X86CPU *cpu;
 
@@ -881,6 +882,10 @@ static X86CPU *pc_new_cpu(const char *cpu_model, int64_t apic_id, Error **errp)
 
     object_property_set_int(OBJECT(cpu), apic_id, "apic-id", errp);
     object_property_set_bool(OBJECT(cpu), true, "realized", errp);
+
+    if (icc_bridge != NULL) {
+        icc_bridge_set_cpu_link(OBJECT(icc_bridge), OBJECT(cpu));
+    }
 
     if (error_is_set(errp)) {
         if (cpu != NULL) {
@@ -911,7 +916,7 @@ void pc_cpus_init(const char *cpu_model)
                                                  TYPE_ICC_BRIDGE, NULL));
 
     for (i = 0; i < smp_cpus; i++) {
-        cpu = pc_new_cpu(cpu_model, x86_cpu_apic_id_from_index(i), &error);
+        cpu = pc_new_cpu(cpu_model, x86_cpu_apic_id_from_index(i), ib, &error);
         if (error) {
             fprintf(stderr, "%s\n", error_get_pretty(error));
             error_free(error);

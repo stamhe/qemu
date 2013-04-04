@@ -49,5 +49,7 @@ typedef struct ICCDeviceClass {
 
 #define TYPE_ICC_BRIDGE "icc-bridge"
 
+void icc_bridge_set_cpu_link(Object *bridge, Object *cpu);
+
 #endif /* CONFIG_USER_ONLY */
 #endif
