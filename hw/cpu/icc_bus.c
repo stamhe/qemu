@@ -18,6 +18,7 @@
  */
 #include "hw/i386/icc_bus.h"
 #include "hw/sysbus.h"
+#include "sysemu/sysemu.h"
 
 static void icc_bus_initfn(Object *obj)
 {
@@ -61,15 +62,39 @@ typedef struct ICCBridgeState {
     SysBusDevice busdev;
     MemoryRegion apic_container;
     MemoryRegion ioapic_container;
+    Notifier cpu_added_notifier;
+    Object **links;
 } ICCBridgeState;
 #define ICC_BRIGDE(obj) OBJECT_CHECK(ICCBridgeState, (obj), TYPE_ICC_BRIDGE)
 
+
+void icc_bridge_set_cpu_link(Object *bridge, Object *cpu_obj)
+{
+    gchar *name;
+    Error *error = NULL;
+    CPUState *cpu = CPU(cpu_obj);
+    int64_t id = CPU_GET_CLASS(cpu)->get_arch_id(cpu);
+
+    name = g_strdup_printf("cpu[%" PRIu32 "]", x86_cpu_apic_id_from_index(id));
+    object_property_set_link(bridge, cpu_obj, name, &error);
+    g_free(name);
+
+    g_assert(error == NULL);
+}
+
+static void icc_bridge_cpu_added_req(Notifier *n, void *opaque)
+{
+    ICCBridgeState *s = container_of(n, ICCBridgeState, cpu_added_notifier);
+
+    icc_bridge_set_cpu_link(OBJECT(s), OBJECT(opaque));
+}
 
 static void icc_bridge_initfn(Object *obj)
 {
     ICCBridgeState *s = ICC_BRIGDE(obj);
     SysBusDevice *sb = SYS_BUS_DEVICE(obj);
     ICCBus *ibus;
+    int i;
 
     ibus = ICC_BUS(qbus_create(TYPE_ICC_BUS, DEVICE(obj), "icc-bus"));
 
@@ -85,12 +110,33 @@ static void icc_bridge_initfn(Object *obj)
     memory_region_init(&s->ioapic_container, "icc-ioapic-container", 0x1000);
     sysbus_init_mmio(sb, &s->ioapic_container);
     ibus->ioapic_address_space = &s->ioapic_container;
+
+    s->links = g_malloc0(sizeof(Object *) * max_cpus);
+    for (i = 0; i < max_cpus; i++) {
+        gchar *cpu_name;
+
+        cpu_name = g_strdup_printf("cpu[%" PRIu32 "]",
+                                   x86_cpu_apic_id_from_index(i));
+        object_property_add_link(obj, cpu_name, TYPE_CPU, &s->links[i], NULL);
+        g_free(cpu_name);
+    }
+
+    s->cpu_added_notifier.notify = icc_bridge_cpu_added_req;
+    qemu_register_cpu_added_notifier(&s->cpu_added_notifier);
+}
+
+static void icc_bridge_fini(Object *obj)
+{
+    ICCBridgeState *s = ICC_BRIGDE(obj);
+
+    g_free(s->links);
 }
 
 static const TypeInfo icc_bridge_info = {
     .name  = "icc-bridge",
     .parent = TYPE_SYS_BUS_DEVICE,
     .instance_init  = icc_bridge_initfn,
+    .instance_finalize  = icc_bridge_fini,
     .instance_size  = sizeof(ICCBridgeState),
 };
 
