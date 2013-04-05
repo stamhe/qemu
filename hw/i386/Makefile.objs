@@ -1,5 +1,5 @@
 obj-y += mc146818rtc.o
-obj-y += apic_common.o apic.o
+obj-y += apic_common.o apic.o icc_bus.o
 obj-y += sga.o ioapic_common.o ioapic.o piix_pci.o
 obj-y += vmport.o
 obj-y += pci/pci-hotplug.o wdt_ib700.o
