@@ -41,6 +41,7 @@
 #endif
 
 #include "sysemu/sysemu.h"
+#include "hw/cpu/icc_bus.h"
 #ifndef CONFIG_USER_ONLY
 #include "hw/xen/xen.h"
 #include "hw/sysbus.h"
@@ -1619,6 +1620,19 @@ X86CPU *cpu_x86_create(const char *cpu_model, Error **errp)
     features = model_pieces[1];
 
     cpu = X86_CPU(object_new(TYPE_X86_CPU));
+#ifndef CONFIG_USER_ONLY
+    do {
+        bool ambiguous = false;
+        Object *icc_bus = object_resolve_path_type("icc-bus", TYPE_ICC_BUS,
+                                                   &ambiguous);
+        if ((icc_bus == NULL) || ambiguous) {
+            error_setg(&error, "Invalid icc-bus value");
+            goto out;
+        }
+        qdev_set_parent_bus(DEVICE(cpu), BUS(icc_bus));
+        object_unref(OBJECT(cpu));
+   } while (0);
+#endif
     env = &cpu->env;
     env->cpu_model_str = cpu_model;
 
@@ -2330,6 +2344,7 @@ static void x86_cpu_common_class_init(ObjectClass *oc, void *data)
 
     xcc->parent_realize = dc->realize;
     dc->realize = x86_cpu_realizefn;
+    dc->bus_type = TYPE_ICC_BUS;
 
     xcc->parent_reset = cc->reset;
     cc->reset = x86_cpu_reset;
