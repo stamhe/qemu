@@ -41,6 +41,7 @@
 #endif
 
 #include "sysemu/sysemu.h"
+#include "hw/i386/icc_bus.h"
 #ifndef CONFIG_USER_ONLY
 #include "hw/xen/xen.h"
 #include "hw/sysbus.h"
@@ -1609,6 +1610,7 @@ X86CPU *cpu_x86_create(const char *cpu_model, Error **errp)
     gchar **model_pieces;
     char *name, *features;
     Error *error = NULL;
+    Object *icc_bus = object_resolve_path_type("icc-bus", TYPE_ICC_BUS, NULL);
 
     model_pieces = g_strsplit(cpu_model, ",", 2);
     if (!model_pieces[0]) {
@@ -1619,6 +1621,10 @@ X86CPU *cpu_x86_create(const char *cpu_model, Error **errp)
     features = model_pieces[1];
 
     cpu = X86_CPU(object_new(TYPE_X86_CPU));
+    if (icc_bus) {
+        qdev_set_parent_bus(DEVICE(cpu), BUS(icc_bus));
+        object_unref(OBJECT(cpu));
+    }
     env = &cpu->env;
     env->cpu_model_str = cpu_model;
 
@@ -2330,6 +2336,7 @@ static void x86_cpu_common_class_init(ObjectClass *oc, void *data)
 
     xcc->parent_realize = dc->realize;
     dc->realize = x86_cpu_realizefn;
+    dc->bus_type = TYPE_ICC_BUS;
 
     xcc->parent_reset = cc->reset;
     cc->reset = x86_cpu_reset;
