@@ -105,7 +105,7 @@ void pc_pci_device_init(PCIBus *pci_bus);
 typedef void (*cpu_set_smm_t)(int smm, void *arg);
 void cpu_smm_register(cpu_set_smm_t callback, void *arg);
 
-void ioapic_init_gsi(GSIState *gsi_state, const char *parent_name);
+void ioapic_init_gsi(GSIState *gsi_state, DeviceState *ioapic);
 
 /* acpi.c */
 extern int acpi_enabled;

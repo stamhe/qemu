@@ -1191,26 +1191,20 @@ void pc_pci_device_init(PCIBus *pci_bus)
     }
 }
 
-void ioapic_init_gsi(GSIState *gsi_state, const char *parent_name)
+void ioapic_init_gsi(GSIState *gsi_state, DeviceState *dev)
 {
-    DeviceState *dev;
-    SysBusDevice *d;
     unsigned int i;
+    DeviceState *ioapic;
+    const char *ioapic_name = "ioapic";
 
     if (kvm_irqchip_in_kernel()) {
-        dev = qdev_create(NULL, "kvm-ioapic");
-    } else {
-        dev = qdev_create(NULL, "ioapic");
+        ioapic_name = "kvm-ioapic";
     }
-    if (parent_name) {
-        object_property_add_child(object_resolve_path(parent_name, NULL),
-                                  "ioapic", OBJECT(dev), NULL);
-    }
-    qdev_init_nofail(dev);
-    d = SYS_BUS_DEVICE(dev);
-    sysbus_mmio_map(d, 0, IO_APIC_DEFAULT_ADDRESS);
+    object_property_set_str(OBJECT(dev), ioapic_name, "ioapic-type", NULL);
 
+    sysbus_mmio_map(SYS_BUS_DEVICE(dev), 1, IO_APIC_DEFAULT_ADDRESS);
+    ioapic = DEVICE(object_resolve_path_component(OBJECT(dev), "ioapic"));
     for (i = 0; i < IOAPIC_NUM_PINS; i++) {
-        gsi_state->ioapic_irq[i] = qdev_get_gpio_in(dev, i);
+        gsi_state->ioapic_irq[i] = qdev_get_gpio_in(ioapic, i);
     }
 }

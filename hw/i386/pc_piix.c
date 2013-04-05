@@ -164,7 +164,7 @@ static void pc_init1(MemoryRegion *system_memory,
         gsi_state->i8259_irq[i] = i8259[i];
     }
     if (pci_enabled) {
-        ioapic_init_gsi(gsi_state, "i440fx");
+        ioapic_init_gsi(gsi_state, icc_bridge);
     }
     qdev_init_nofail(icc_bridge);
 

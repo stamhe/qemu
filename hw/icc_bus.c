@@ -60,15 +60,33 @@ static const TypeInfo icc_device_info = {
 typedef struct ICCBridgeState {
     SysBusDevice busdev;
     MemoryRegion apic_container;
+    MemoryRegion ioapic_container;
 } ICCBridgeState;
 #define ICC_BRIGDE(obj) OBJECT_CHECK(ICCBridgeState, (obj), TYPE_ICC_BRIDGE)
 
+static void icc_bridge_prop_set_ioapic_type(Object *obj, const char *value,
+                                            Error **errp)
+{
+    BusState *bus = BUS(object_resolve_path_component(obj, "icc-bus"));
+    DeviceState *ioapic;
+
+    if (value != NULL) {
+        ioapic = qdev_create(bus, value);
+        object_property_add_child(obj, "ioapic", OBJECT(ioapic), NULL);
+        qdev_init_nofail(ioapic);
+    }
+}
 
 static void icc_bridge_initfn(Object *obj)
 {
     ICCBridgeState *s = ICC_BRIGDE(obj);
     SysBusDevice *sb = SYS_BUS_DEVICE(obj);
     ICCBus *ibus;
+
+    object_property_add_str(obj, "ioapic-type",
+                             NULL,
+                             icc_bridge_prop_set_ioapic_type,
+                             NULL);
 
     ibus = ICC_BUS(qbus_create(TYPE_ICC_BUS, DEVICE(obj), "icc-bus"));
 
@@ -79,6 +97,11 @@ static void icc_bridge_initfn(Object *obj)
                        APIC_SPACE_SIZE);
     sysbus_init_mmio(sb, &s->apic_container);
     ibus->apic_address_space = &s->apic_container;
+
+    /* must be second registered region, board maps it by 1 index */
+    memory_region_init(&s->ioapic_container, "icc-ioapic-container", 0x1000);
+    sysbus_init_mmio(sb, &s->ioapic_container);
+    ibus->ioapic_address_space = &s->ioapic_container;
 }
 
 static const TypeInfo icc_bridge_info = {

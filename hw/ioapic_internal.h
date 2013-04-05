@@ -24,7 +24,7 @@
 
 #include "hw/hw.h"
 #include "exec/memory.h"
-#include "hw/sysbus.h"
+#include "hw/icc_bus.h"
 
 #define MAX_IOAPICS                     1
 
@@ -82,14 +82,14 @@ typedef struct IOAPICCommonState IOAPICCommonState;
      OBJECT_GET_CLASS(IOAPICCommonClass, (obj), TYPE_IOAPIC_COMMON)
 
 typedef struct IOAPICCommonClass {
-    SysBusDeviceClass parent_class;
+    ICCDeviceClass parent_class;
     void (*init)(IOAPICCommonState *s, int instance_no);
     void (*pre_save)(IOAPICCommonState *s);
     void (*post_load)(IOAPICCommonState *s);
 } IOAPICCommonClass;
 
 struct IOAPICCommonState {
-    SysBusDevice busdev;
+    ICCDevice busdev;
     MemoryRegion io_memory;
     uint8_t id;
     uint8_t ioregsel;
