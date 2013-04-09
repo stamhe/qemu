@@ -20,6 +20,7 @@
 
 #include "qom/cpu.h"
 #include "qemu-common.h"
+#include "sysemu/kvm.h"
 
 void cpu_reset_interrupt(CPUState *cpu, int mask)
 {
@@ -57,6 +58,9 @@ static ObjectClass *cpu_common_class_by_name(const char *cpu_model)
 
 static void cpu_common_realizefn(DeviceState *dev, Error **errp)
 {
+    if (dev->hotplugged) {
+        cpu_synchronize_post_init(CPU(dev));
+    }
 }
 
 static void cpu_class_init(ObjectClass *klass, void *data)
