@@ -122,6 +122,7 @@ int kvm_on_sigbus(int code, void *addr)
     return 1;
 }
 
+#ifndef CONFIG_USER_ONLY
 int kvm_irqchip_add_msi_route(KVMState *s, MSIMessage msg)
 {
     return -ENOSYS;
@@ -145,3 +146,4 @@ int kvm_irqchip_remove_irqfd_notifier(KVMState *s, EventNotifier *n, int virq)
 {
     return -ENOSYS;
 }
+#endif

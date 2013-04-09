@@ -21,6 +21,7 @@
 #ifndef QEMU_MSI_H
 #define QEMU_MSI_H
 
+#ifndef CONFIG_USER_ONLY
 #include "qemu-common.h"
 #include "hw/pci/pci.h"
 
@@ -47,4 +48,5 @@ static inline bool msi_present(const PCIDevice *dev)
     return dev->cap_present & QEMU_PCI_CAP_MSI;
 }
 
+#endif
 #endif /* QEMU_MSI_H */
