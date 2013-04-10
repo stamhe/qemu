@@ -53,6 +53,7 @@
 #include "qemu/bitmap.h"
 #include "qemu/config-file.h"
 #include "hw/acpi/acpi.h"
+#include "hw/cpu/icc_bus.h"
 
 /* debug PC/ISA interrupts */
 //#define DEBUG_IRQ
@@ -916,7 +917,9 @@ static X86CPU *pc_new_cpu(const char *cpu_model, int64_t apic_id, Error **errp)
 void pc_cpus_init(const char *cpu_model)
 {
     int i;
+    X86CPU *cpu = NULL;
     Error *error = NULL;
+    SysBusDevice *icc_bridge;
 
     /* init CPUs */
     if (cpu_model == NULL) {
@@ -927,13 +930,22 @@ void pc_cpus_init(const char *cpu_model)
 #endif
     }
 
+    icc_bridge = SYS_BUS_DEVICE(object_resolve_path_type("icc-bridge",
+                                                 TYPE_ICC_BRIDGE, NULL));
+
     for (i = 0; i < smp_cpus; i++) {
-        pc_new_cpu(cpu_model, x86_cpu_apic_id_from_index(i), &error);
+        cpu = pc_new_cpu(cpu_model, x86_cpu_apic_id_from_index(i), &error);
         if (error) {
             fprintf(stderr, "%s\n", error_get_pretty(error));
             error_free(error);
             exit(1);
         }
+    }
+
+    /* map APIC MMIO area if CPU has APIC */
+    if (cpu && cpu->env.apic_state) {
+        /* XXX: what if the base changes? */
+        sysbus_mmio_map_overlap(icc_bridge, 0, APIC_DEFAULT_ADDRESS, 0x1000);
     }
 }
 
