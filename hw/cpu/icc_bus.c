@@ -62,13 +62,26 @@ static const TypeInfo icc_device_info = {
 
 typedef struct ICCBridgeState {
     SysBusDevice busdev;
+    MemoryRegion apic_container;
 } ICCBridgeState;
 #define ICC_BRIGDE(obj) OBJECT_CHECK(ICCBridgeState, (obj), TYPE_ICC_BRIDGE)
 
 
 static void icc_bridge_initfn(Object *obj)
 {
-    qbus_create(TYPE_ICC_BUS, DEVICE(obj), "icc-bus");
+    ICCBridgeState *s = ICC_BRIGDE(obj);
+    SysBusDevice *sb = SYS_BUS_DEVICE(obj);
+    ICCBus *ibus;
+
+    ibus = ICC_BUS(qbus_create(TYPE_ICC_BUS, DEVICE(obj), "icc-bus"));
+
+    /* Do not change order of registering regions,
+     * APIC must be first registered region, board maps it by 0 index
+     */
+    memory_region_init(&s->apic_container, "icc-apic-container",
+                       APIC_SPACE_SIZE);
+    sysbus_init_mmio(sb, &s->apic_container);
+    ibus->apic_address_space = &s->apic_container;
 }
 
 static const TypeInfo icc_bridge_info = {

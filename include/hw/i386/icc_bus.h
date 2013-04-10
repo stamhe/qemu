@@ -22,6 +22,7 @@
 #ifndef ICC_BUS_H
 #define ICC_BUS_H
 
+#include "exec/memory.h"
 #include "hw/qdev-core.h"
 
 #define TYPE_ICC_BUS "icc-bus"
@@ -29,6 +30,7 @@
 #ifndef CONFIG_USER_ONLY
 typedef struct ICCBus {
     BusState qbus;
+    MemoryRegion *apic_address_space;
 } ICCBus;
 #define ICC_BUS(obj) OBJECT_CHECK(ICCBus, (obj), TYPE_ICC_BUS)
 

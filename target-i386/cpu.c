@@ -41,10 +41,10 @@
 #endif
 
 #include "sysemu/sysemu.h"
+#include "hw/qdev-properties.h"
 #include "hw/i386/icc_bus.h"
 #ifndef CONFIG_USER_ONLY
 #include "hw/xen/xen.h"
-#include "hw/sysbus.h"
 #include "hw/i386/apic_internal.h"
 #endif
 
@@ -2111,6 +2111,7 @@ static void mce_init(X86CPU *cpu)
 static void x86_cpu_apic_create(X86CPU *cpu, Error **errp)
 {
     CPUX86State *env = &cpu->env;
+    DeviceState *dev = DEVICE(cpu);
     APICCommonState *apic;
     const char *apic_type = "apic";
 
@@ -2120,7 +2121,7 @@ static void x86_cpu_apic_create(X86CPU *cpu, Error **errp)
         apic_type = "xen-apic";
     }
 
-    env->apic_state = qdev_try_create(NULL, apic_type);
+    env->apic_state = qdev_try_create(dev->parent_bus, apic_type);
     if (env->apic_state == NULL) {
         error_setg(errp, "APIC device '%s' could not be created", apic_type);
         return;
@@ -2137,7 +2138,6 @@ static void x86_cpu_apic_create(X86CPU *cpu, Error **errp)
 static void x86_cpu_apic_realize(X86CPU *cpu, Error **errp)
 {
     CPUX86State *env = &cpu->env;
-    static int apic_mapped;
 
     if (env->apic_state == NULL) {
         return;
@@ -2147,16 +2147,6 @@ static void x86_cpu_apic_realize(X86CPU *cpu, Error **errp)
         error_setg(errp, "APIC device '%s' could not be initialized",
                    object_get_typename(OBJECT(env->apic_state)));
         return;
-    }
-
-    /* XXX: mapping more APICs at the same memory location */
-    if (apic_mapped == 0) {
-        /* NOTE: the APIC is directly connected to the CPU - it is not
-           on the global memory bus. */
-        /* XXX: what if the base changes? */
-        sysbus_mmio_map_overlap(SYS_BUS_DEVICE(env->apic_state), 0,
-                                APIC_DEFAULT_ADDRESS, 0x1000);
-        apic_mapped = 1;
     }
 }
 #else
