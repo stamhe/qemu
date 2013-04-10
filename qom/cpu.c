@@ -21,6 +21,7 @@
 #include "qom/cpu.h"
 #include "qemu-common.h"
 #include "sysemu/kvm.h"
+#include "sysemu/cpus.h"
 
 void cpu_reset_interrupt(CPUState *cpu, int mask)
 {
@@ -60,6 +61,7 @@ static void cpu_common_realizefn(DeviceState *dev, Error **errp)
 {
     if (dev->hotplugged) {
         cpu_synchronize_post_init(CPU(dev));
+        resume_vcpu(CPU(dev));
     }
 }
 
