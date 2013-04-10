@@ -1220,20 +1220,22 @@ void ioapic_init_gsi(GSIState *gsi_state, const char *parent_name)
     DeviceState *dev;
     SysBusDevice *d;
     unsigned int i;
+    BusState *b = BUS(object_resolve_path_type("icc-bus", TYPE_ICC_BUS, NULL));
 
     if (kvm_irqchip_in_kernel()) {
-        dev = qdev_create(NULL, "kvm-ioapic");
+        dev = qdev_create(b, "kvm-ioapic");
     } else {
-        dev = qdev_create(NULL, "ioapic");
+        dev = qdev_create(b, "ioapic");
     }
     if (parent_name) {
         object_property_add_child(object_resolve_path(parent_name, NULL),
                                   "ioapic", OBJECT(dev), NULL);
     }
     qdev_init_nofail(dev);
-    d = SYS_BUS_DEVICE(dev);
-    sysbus_mmio_map(d, 0, IO_APIC_DEFAULT_ADDRESS);
 
+    d = SYS_BUS_DEVICE(object_resolve_path_type("icc-bridge", TYPE_ICC_BRIDGE,
+                                                NULL));
+    sysbus_mmio_map(d, 1, IO_APIC_DEFAULT_ADDRESS);
     for (i = 0; i < IOAPIC_NUM_PINS; i++) {
         gsi_state->ioapic_irq[i] = qdev_get_gpio_in(dev, i);
     }
