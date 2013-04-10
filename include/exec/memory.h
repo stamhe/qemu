@@ -711,6 +711,16 @@ void memory_region_set_enabled(MemoryRegion *mr, bool enabled);
 void memory_region_set_address(MemoryRegion *mr, hwaddr addr);
 
 /*
+ * memory_region_get_address: get current the address of a region
+ *
+ * Returns the absolute address of a region.
+ * May be used on regions that are currently part of a memory hierarchy.
+ *
+ * @mr: the region being queried
+ */
+hwaddr memory_region_get_address(MemoryRegion *mr);
+
+/*
  * memory_region_set_alias_offset: dynamically update a memory alias's offset
  *
  * Dynamically updates the offset into the target region that an alias points

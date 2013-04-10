@@ -57,11 +57,13 @@ static int ioapic_dispatch_post_load(void *opaque, int version_id)
     return 0;
 }
 
-static int ioapic_init_common(SysBusDevice *dev)
+static int ioapic_init_common(ICCDevice *dev)
 {
     IOAPICCommonState *s = IOAPIC_COMMON(dev);
+    DeviceState *d = DEVICE(dev);
     IOAPICCommonClass *info;
     static int ioapic_no;
+    static bool mmio_registered;
 
     if (ioapic_no >= MAX_IOAPICS) {
         return -1;
@@ -70,7 +72,12 @@ static int ioapic_init_common(SysBusDevice *dev)
     info = IOAPIC_COMMON_GET_CLASS(s);
     info->init(s, ioapic_no);
 
-    sysbus_init_mmio(&s->busdev, &s->io_memory);
+    if (!mmio_registered) {
+        MemoryRegion *as = ICC_BUS(d->parent_bus)->ioapic_address_space;
+        memory_region_add_subregion(as, 0, &s->io_memory);
+        mmio_registered = true;
+    }
+
     ioapic_no++;
 
     return 0;
@@ -95,7 +102,7 @@ static const VMStateDescription vmstate_ioapic_common = {
 
 static void ioapic_common_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *sc = SYS_BUS_DEVICE_CLASS(klass);
+    ICCDeviceClass *sc = ICC_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
     sc->init = ioapic_init_common;
@@ -105,7 +112,7 @@ static void ioapic_common_class_init(ObjectClass *klass, void *data)
 
 static const TypeInfo ioapic_common_type = {
     .name = TYPE_IOAPIC_COMMON,
-    .parent = TYPE_SYS_BUS_DEVICE,
+    .parent = TYPE_ICC_DEVICE,
     .instance_size = sizeof(IOAPICCommonState),
     .class_size = sizeof(IOAPICCommonClass),
     .class_init = ioapic_common_class_init,

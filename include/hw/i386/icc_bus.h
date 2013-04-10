@@ -31,6 +31,7 @@
 typedef struct ICCBus {
     BusState qbus;
     MemoryRegion *apic_address_space;
+    MemoryRegion *ioapic_address_space;
 } ICCBus;
 #define ICC_BUS(obj) OBJECT_CHECK(ICCBus, (obj), TYPE_ICC_BUS)
 
