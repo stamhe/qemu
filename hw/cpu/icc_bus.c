@@ -76,6 +76,7 @@ typedef struct ICCBridgeState {
     SysBusDevice parent_obj;
     ICCBus icc_bus;
     MemoryRegion apic_container;
+    MemoryRegion ioapic_container;
 } ICCBridgeState;
 
 #define ICC_BRIGDE(obj) OBJECT_CHECK(ICCBridgeState, (obj), TYPE_ICC_BRIDGE)
@@ -94,6 +95,11 @@ static void icc_bridge_init(Object *obj)
                        APIC_SPACE_SIZE);
     sysbus_init_mmio(sb, &s->apic_container);
     s->icc_bus.apic_address_space = &s->apic_container;
+
+    /* must be second registered region, board maps it by 1 index */
+    memory_region_init(&s->ioapic_container, "icc-ioapic-container", 0x1000);
+    sysbus_init_mmio(sb, &s->ioapic_container);
+    s->icc_bus.ioapic_address_space = &s->ioapic_container;
 }
 
 static const TypeInfo icc_bridge_info = {

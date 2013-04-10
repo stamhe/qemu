@@ -733,7 +733,7 @@ void memory_region_set_alias_offset(MemoryRegion *mr,
  *    .@offset_within_address_space + .@size <= @addr + @size
  *
  * @mr: a (possibly indirect) parent that contains the region to be found
- * @addr: start of the area within @as to be searched
+ * @addr: start of the area within @mr to be searched
  * @size: size of the area to be searched
  */
 MemoryRegionSection memory_region_find(MemoryRegion *mr,
