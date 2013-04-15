@@ -256,5 +256,14 @@ void cpu_interrupt(CPUState *cpu, int mask);
  */
 void cpu_reset_interrupt(CPUState *cpu, int mask);
 
+/**
+ * resume_vcpu:
+ * @cpu: The CPU to resume.
+ *
+ * Resumes CPU, i.e. puts CPU into runable state.
+ * KVM requires extra call cpu_synchronize_post_init() to make
+ * KVM's CPU instance runable.
+ */
+void resume_vcpu(CPUState *cpu);
 
 #endif
