@@ -215,6 +215,14 @@ bool cpu_is_stopped(CPUState *cpu);
  */
 void run_on_cpu(CPUState *cpu, void (*func)(void *data), void *data);
 
+/** qemu_for_each_cpu:
+ * @func: The function to be executed.
+ * @data: Data to pass to the function.
+ *
+ * Executes @func on all CPUs
+ */
+void qemu_for_each_cpu(void (*func)(CPUState *cpu, void *data), void *data);
+
 /**
  * qemu_get_cpu:
  * @index: The CPUState@cpu_index value of the CPU to obtain.
