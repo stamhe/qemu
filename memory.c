@@ -1413,6 +1413,17 @@ void memory_region_set_address(MemoryRegion *mr, hwaddr addr)
     memory_region_transaction_commit();
 }
 
+hwaddr memory_region_get_address(MemoryRegion *mr)
+{
+    hwaddr addr = mr->addr;
+
+    while (mr->parent) {
+        mr = mr->parent;
+        addr += mr->addr;
+    }
+    return addr;
+}
+
 void memory_region_set_alias_offset(MemoryRegion *mr, hwaddr offset)
 {
     assert(mr->alias);
