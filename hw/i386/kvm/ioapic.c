@@ -89,14 +89,21 @@ static void kvm_ioapic_put(IOAPICCommonState *s)
 {
     struct kvm_irqchip chip;
     struct kvm_ioapic_state *kioapic;
+    MemoryRegionSection mrs;
     int ret, i;
+
+    mrs = memory_region_find(&s->io_memory, 0, 0x1000);
+    if (mrs.mr != &s->io_memory || mrs.offset_within_region != 0) {
+        fprintf(stderr, "cannot find IOAPIC base\n");
+        abort();
+    }
 
     chip.chip_id = KVM_IRQCHIP_IOAPIC;
     kioapic = &chip.chip.ioapic;
 
     kioapic->id = s->id;
     kioapic->ioregsel = s->ioregsel;
-    kioapic->base_address = s->busdev.mmio[0].addr;
+    kioapic->base_address = mrs.offset_within_address_space;
     kioapic->irr = s->irr;
     for (i = 0; i < IOAPIC_NUM_PINS; i++) {
         kioapic->redirtbl[i].bits = s->ioredtbl[i];

@@ -725,17 +725,18 @@ void memory_region_set_alias_offset(MemoryRegion *mr,
  *
  * Returns a #MemoryRegionSection that describes a contiguous overlap.
  * It will have the following characteristics:
- *    .@offset_within_address_space >= @addr
- *    .@offset_within_address_space + .@size <= @addr + @size
  *    .@size = 0 iff no overlap was found
  *    .@mr is non-%NULL iff an overlap was found
  *
- * @address_space: a top-level (i.e. parentless) region that contains
- *       the region to be found
- * @addr: start of the area within @address_space to be searched
+ * If @mr is parent-less,
+ *    .@offset_within_address_space >= @addr
+ *    .@offset_within_address_space + .@size <= @addr + @size
+ *
+ * @mr: a (possibly indirect) parent that contains the region to be found
+ * @addr: start of the area within @as to be searched
  * @size: size of the area to be searched
  */
-MemoryRegionSection memory_region_find(MemoryRegion *address_space,
+MemoryRegionSection memory_region_find(MemoryRegion *mr,
                                        hwaddr addr, uint64_t size);
 
 /**
