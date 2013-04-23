@@ -179,6 +179,8 @@ int main(int argc, char **argv)
 #define MAX_VIRTIO_CONSOLES 1
 #define MAX_SCLP_CONSOLES 1
 
+QEMUMachineInitArgs machine_args;
+
 static const char *data_dir[16];
 static int data_dir_idx;
 const char *bios_name = NULL;
@@ -4273,7 +4275,8 @@ int main(int argc, char **argv, char **envp)
 
     qdev_machine_init();
 
-    QEMUMachineInitArgs args = { .ram_size = ram_size,
+    machine_args = (QEMUMachineInitArgs){
+                                 .ram_size = ram_size,
                                  .boot_device = (boot_devices[0] == '\0') ?
                                                 machine->boot_order :
                                                 boot_devices,
@@ -4281,7 +4284,8 @@ int main(int argc, char **argv, char **envp)
                                  .kernel_cmdline = kernel_cmdline,
                                  .initrd_filename = initrd_filename,
                                  .cpu_model = cpu_model };
-    machine->init(&args);
+
+    machine->init(&machine_args);
 
     cpu_synchronize_all_post_init();
 
