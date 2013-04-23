@@ -179,6 +179,8 @@ int main(int argc, char **argv)
 #define MAX_VIRTIO_CONSOLES 1
 #define MAX_SCLP_CONSOLES 1
 
+QEMUMachineInitArgs *machine_args;
+
 static const char *data_dir[16];
 static int data_dir_idx;
 const char *bios_name = NULL;
@@ -4295,13 +4297,15 @@ int main(int argc, char **argv, char **envp)
                                  .kernel_cmdline = kernel_cmdline,
                                  .initrd_filename = initrd_filename,
                                  .cpu_model = cpu_model };
+    machine_args = &args;
+    current_machine = machine;
+
     machine->init(&args);
 
     cpu_synchronize_all_post_init();
 
     set_numa_modes();
 
-    current_machine = machine;
 
     /* init USB devices */
     if (usb_enabled(false)) {
