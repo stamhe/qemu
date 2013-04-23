@@ -914,6 +914,25 @@ static X86CPU *pc_new_cpu(const char *cpu_model, int64_t apic_id, Error **errp)
     return cpu;
 }
 
+void pc_hot_add_cpu(const int64_t id, Error **errp)
+{
+    int64_t apic_id = x86_cpu_apic_id_from_index(id);
+
+    if (cpu_exists(apic_id)) {
+        error_setg(errp, "Unable to add CPU: %" PRIi64
+                   ", it already exists", id);
+        return;
+    }
+
+    if (id >= max_cpus) {
+        error_setg(errp, "Unable to add CPU: %" PRIi64
+                   ", max allowed: %d", id, max_cpus - 1);
+        return;
+    }
+
+    pc_new_cpu(machine_args.cpu_model, apic_id, errp);
+}
+
 void pc_cpus_init(QEMUMachineInitArgs *args)
 {
     int i;
