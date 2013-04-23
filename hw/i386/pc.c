@@ -915,6 +915,28 @@ static X86CPU *pc_new_cpu(const char *cpu_model, int64_t apic_id,
     return cpu;
 }
 
+void pc_hot_add_cpu(const int64_t id, Error **errp)
+{
+    DeviceState *icc_bridge;
+    int64_t apic_id = x86_cpu_apic_id_from_index(id);
+
+    if (cpu_exists(apic_id)) {
+        error_setg(errp, "Unable to add CPU: %" PRIi64
+                   ", it already exists", id);
+        return;
+    }
+
+    if (id >= max_cpus) {
+        error_setg(errp, "Unable to add CPU: %" PRIi64
+                   ", max allowed: %d", id, max_cpus - 1);
+        return;
+    }
+
+    icc_bridge = DEVICE(object_resolve_path_type("icc-bridge",
+                                                 TYPE_ICC_BRIDGE, NULL));
+    pc_new_cpu(machine_args.cpu_model, apic_id, icc_bridge, errp);
+}
+
 void pc_cpus_init(QEMUMachineInitArgs *args, DeviceState *icc_bridge)
 {
     int i;
