@@ -54,6 +54,7 @@
 #include "qemu/config-file.h"
 #include "hw/acpi/acpi.h"
 #include "hw/cpu/icc_bus.h"
+#include "hw/boards.h"
 
 /* debug PC/ISA interrupts */
 //#define DEBUG_IRQ
@@ -915,6 +916,33 @@ static X86CPU *pc_new_cpu(const char *cpu_model, int64_t apic_id,
     return cpu;
 }
 
+void pc_hot_add_cpu(const int64_t id, Error **errp)
+{
+    DeviceState *icc_bridge;
+    const char *cpu_model;
+    QemuOpts *machine_opts;
+    int64_t apic_id = x86_cpu_apic_id_from_index(id);
+
+    if (cpu_exists(apic_id)) {
+        error_setg(errp, "Unable to add CPU: %" PRIi64
+                   ", it already exists", id);
+        return;
+    }
+
+    if (id >= max_cpus) {
+        error_setg(errp, "Unable to add CPU: %" PRIi64
+                   ", max allowed: %d", id, max_cpus - 1);
+        return;
+    }
+
+    machine_opts = qemu_opts_find(qemu_find_opts("machine"), 0);
+    cpu_model = qemu_opt_get(machine_opts, "cpu-model");
+
+    icc_bridge = DEVICE(object_resolve_path_type("icc-bridge",
+                                                 TYPE_ICC_BRIDGE, NULL));
+    pc_new_cpu(cpu_model, apic_id, icc_bridge, errp);
+}
+
 void pc_cpus_init(const char *cpu_model, DeviceState *icc_bridge)
 {
     int i;
@@ -928,6 +956,7 @@ void pc_cpus_init(const char *cpu_model, DeviceState *icc_bridge)
 #else
         cpu_model = "qemu32";
 #endif
+        qemu_opts_set(qemu_find_opts("machine"), 0, "cpu-model", cpu_model);
     }
 
     for (i = 0; i < smp_cpus; i++) {
