@@ -43,6 +43,7 @@ typedef struct QEMUMachine {
     GlobalProperty *compat_props;
     struct QEMUMachine *next;
     const char *hw_version;
+    void (*hot_add_cpu)(const int64_t id, Error **errp);
 } QEMUMachine;
 
 int qemu_register_machine(QEMUMachine *m);
