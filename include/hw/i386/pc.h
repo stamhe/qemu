@@ -9,6 +9,7 @@
 #include "net/net.h"
 #include "exec/memory.h"
 #include "hw/i386/ioapic.h"
+#include "hw/boards.h"
 
 /* PC-style peripherals (also used by other machines).  */
 
@@ -78,7 +79,7 @@ extern int fd_bootchk;
 void pc_register_ferr_irq(qemu_irq irq);
 void pc_acpi_smi_interrupt(void *opaque, int irq, int level);
 
-void pc_cpus_init(const char *cpu_model);
+void pc_cpus_init(QEMUMachineInitArgs *args);
 void pc_acpi_init(const char *default_dsdt);
 void *pc_memory_init(MemoryRegion *system_memory,
                     const char *kernel_filename,

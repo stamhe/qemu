@@ -914,7 +914,7 @@ static X86CPU *pc_new_cpu(const char *cpu_model, int64_t apic_id, Error **errp)
     return cpu;
 }
 
-void pc_cpus_init(const char *cpu_model)
+void pc_cpus_init(QEMUMachineInitArgs *args)
 {
     int i;
     X86CPU *cpu = NULL;
@@ -922,11 +922,11 @@ void pc_cpus_init(const char *cpu_model)
     SysBusDevice *icc_bridge;
 
     /* init CPUs */
-    if (cpu_model == NULL) {
+    if (args->cpu_model == NULL) {
 #ifdef TARGET_X86_64
-        cpu_model = "qemu64";
+        args->cpu_model = "qemu64";
 #else
-        cpu_model = "qemu32";
+        args->cpu_model = "qemu32";
 #endif
     }
 
@@ -935,7 +935,8 @@ void pc_cpus_init(const char *cpu_model)
                                                          NULL));
 
     for (i = 0; i < smp_cpus; i++) {
-        cpu = pc_new_cpu(cpu_model, x86_cpu_apic_id_from_index(i), &error);
+        cpu = pc_new_cpu(args->cpu_model, x86_cpu_apic_id_from_index(i),
+                         &error);
         if (error) {
             fprintf(stderr, "%s\n", error_get_pretty(error));
             error_free(error);
