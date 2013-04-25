@@ -915,23 +915,23 @@ static X86CPU *pc_new_cpu(const char *cpu_model, int64_t apic_id,
     return cpu;
 }
 
-void pc_cpus_init(const char *cpu_model, DeviceState *icc_bridge)
+void pc_cpus_init(QEMUMachineInitArgs *args, DeviceState *icc_bridge)
 {
     int i;
     X86CPU *cpu = NULL;
     Error *error = NULL;
 
     /* init CPUs */
-    if (cpu_model == NULL) {
+    if (args->cpu_model == NULL) {
 #ifdef TARGET_X86_64
-        cpu_model = "qemu64";
+        args->cpu_model = "qemu64";
 #else
-        cpu_model = "qemu32";
+        args->cpu_model = "qemu32";
 #endif
     }
 
     for (i = 0; i < smp_cpus; i++) {
-        cpu = pc_new_cpu(cpu_model, x86_cpu_apic_id_from_index(i),
+        cpu = pc_new_cpu(args->cpu_model, x86_cpu_apic_id_from_index(i),
                          icc_bridge, &error);
         if (error) {
             fprintf(stderr, "%s\n", error_get_pretty(error));
@@ -943,7 +943,8 @@ void pc_cpus_init(const char *cpu_model, DeviceState *icc_bridge)
     /* map APIC MMIO area if CPU has APIC */
     if (cpu && cpu->env.apic_state) {
         /* XXX: what if the base changes? */
-        sysbus_mmio_map_overlap(icc_bridge, 0, APIC_DEFAULT_ADDRESS, 0x1000);
+        sysbus_mmio_map_overlap(SYS_BUS_DEVICE(icc_bridge), 0,
+                                APIC_DEFAULT_ADDRESS, 0x1000);
     }
 }
 
