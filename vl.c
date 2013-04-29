@@ -429,6 +429,10 @@ static QemuOptsList qemu_machine_opts = {
             .name = "usb",
             .type = QEMU_OPT_BOOL,
             .help = "Set on/off to enable/disable usb",
+        }, {
+            .name = "cpu-model",
+            .type = QEMU_OPT_STRING,
+            .help = "alias for \"-cpu\"  CPU model definition",
         },
         { /* End of list */ }
     },
@@ -2979,7 +2983,7 @@ int main(int argc, char **argv, char **envp)
             }
             case QEMU_OPTION_cpu:
                 /* hw initialization will check this */
-                cpu_model = optarg;
+                qemu_opts_set(qemu_find_opts("machine"), 0, "cpu-model", optarg);
                 break;
             case QEMU_OPTION_hda:
                 {
@@ -3919,6 +3923,11 @@ int main(int argc, char **argv, char **envp)
      */
     cpudef_init();
 
+    machine_opts = qemu_opts_find(qemu_find_opts("machine"), 0);
+    if (machine_opts) {
+        cpu_model = qemu_opt_get(machine_opts, "cpu-model");
+    }
+
     if (cpu_model && is_help_option(cpu_model)) {
         list_cpus(stdout, &fprintf, cpu_model);
         exit(0);
@@ -4124,6 +4133,7 @@ int main(int argc, char **argv, char **envp)
         kernel_filename = qemu_opt_get(machine_opts, "kernel");
         initrd_filename = qemu_opt_get(machine_opts, "initrd");
         kernel_cmdline = qemu_opt_get(machine_opts, "append");
+        cpu_model = qemu_opt_get(machine_opts, "cpu-model");
     } else {
         kernel_filename = initrd_filename = kernel_cmdline = NULL;
     }
