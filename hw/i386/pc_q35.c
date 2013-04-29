@@ -214,6 +214,7 @@ static QEMUMachine pc_q35_machine_v1_5 = {
     .desc = "Standard PC (Q35 + ICH9, 2009)",
     .init = pc_q35_init,
     .max_cpus = 255,
+    .cpu_model = DEFAULT_X86CPU_MODEL,
     DEFAULT_MACHINE_OPTIONS,
 };
 
@@ -226,6 +227,7 @@ static QEMUMachine pc_q35_machine_v1_4 = {
         PC_COMPAT_1_4,
         { /* end of list */ }
     },
+    .cpu_model = DEFAULT_X86CPU_MODEL,
     DEFAULT_MACHINE_OPTIONS,
 };
 

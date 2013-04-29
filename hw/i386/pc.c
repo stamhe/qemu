@@ -925,15 +925,6 @@ void pc_cpus_init(const char *cpu_model, DeviceState *icc_bridge)
     X86CPU *cpu = NULL;
     Error *error = NULL;
 
-    /* init CPUs */
-    if (cpu_model == NULL) {
-#ifdef TARGET_X86_64
-        cpu_model = "qemu64";
-#else
-        cpu_model = "qemu32";
-#endif
-    }
-
     for (i = 0; i < smp_cpus; i++) {
         cpu = pc_new_cpu(cpu_model, x86_cpu_apic_id_from_index(i),
                          icc_bridge, &error);

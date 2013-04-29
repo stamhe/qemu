@@ -295,8 +295,6 @@ static void pc_init_isa(QEMUMachineInitArgs *args)
     const char *kernel_cmdline = args->kernel_cmdline;
     const char *initrd_filename = args->initrd_filename;
     const char *boot_device = args->boot_device;
-    if (cpu_model == NULL)
-        cpu_model = "486";
     disable_kvm_pv_eoi();
     enable_compat_apic_id_mode();
     pc_init1(get_system_memory(),
@@ -323,6 +321,7 @@ static QEMUMachine pc_i440fx_machine_v1_5 = {
     .desc = "Standard PC (i440FX + PIIX, 1996)",
     .init = pc_init_pci,
     .max_cpus = 255,
+    .cpu_model = DEFAULT_X86CPU_MODEL,
     .is_default = 1,
     DEFAULT_MACHINE_OPTIONS,
 };
@@ -332,6 +331,7 @@ static QEMUMachine pc_i440fx_machine_v1_4 = {
     .desc = "Standard PC (i440FX + PIIX, 1996)",
     .init = pc_init_pci_1_4,
     .max_cpus = 255,
+    .cpu_model = DEFAULT_X86CPU_MODEL,
     .compat_props = (GlobalProperty[]) {
         PC_COMPAT_1_4,
         { /* end of list */ }
@@ -364,6 +364,7 @@ static QEMUMachine pc_machine_v1_3 = {
     .desc = "Standard PC",
     .init = pc_init_pci_1_3,
     .max_cpus = 255,
+    .cpu_model = DEFAULT_X86CPU_MODEL,
     .compat_props = (GlobalProperty[]) {
         PC_COMPAT_1_3,
         { /* end of list */ }
@@ -404,6 +405,7 @@ static QEMUMachine pc_machine_v1_2 = {
     .desc = "Standard PC",
     .init = pc_init_pci_1_2,
     .max_cpus = 255,
+    .cpu_model = DEFAULT_X86CPU_MODEL,
     .compat_props = (GlobalProperty[]) {
         PC_COMPAT_1_2,
         { /* end of list */ }
@@ -448,6 +450,7 @@ static QEMUMachine pc_machine_v1_1 = {
     .desc = "Standard PC",
     .init = pc_init_pci_1_2,
     .max_cpus = 255,
+    .cpu_model = DEFAULT_X86CPU_MODEL,
     .compat_props = (GlobalProperty[]) {
         PC_COMPAT_1_1,
         { /* end of list */ }
@@ -484,6 +487,7 @@ static QEMUMachine pc_machine_v1_0 = {
     .desc = "Standard PC",
     .init = pc_init_pci_1_0,
     .max_cpus = 255,
+    .cpu_model = DEFAULT_X86CPU_MODEL,
     .compat_props = (GlobalProperty[]) {
         PC_COMPAT_1_0,
         { /* end of list */ }
@@ -500,6 +504,7 @@ static QEMUMachine pc_machine_v0_15 = {
     .desc = "Standard PC",
     .init = pc_init_pci_1_0,
     .max_cpus = 255,
+    .cpu_model = DEFAULT_X86CPU_MODEL,
     .compat_props = (GlobalProperty[]) {
         PC_COMPAT_0_15,
         { /* end of list */ }
@@ -533,6 +538,7 @@ static QEMUMachine pc_machine_v0_14 = {
     .desc = "Standard PC",
     .init = pc_init_pci_1_0,
     .max_cpus = 255,
+    .cpu_model = DEFAULT_X86CPU_MODEL,
     .compat_props = (GlobalProperty[]) {
         PC_COMPAT_0_14, 
         {
@@ -567,6 +573,7 @@ static QEMUMachine pc_machine_v0_13 = {
     .desc = "Standard PC",
     .init = pc_init_pci_no_kvmclock,
     .max_cpus = 255,
+    .cpu_model = DEFAULT_X86CPU_MODEL,
     .compat_props = (GlobalProperty[]) {
         PC_COMPAT_0_13,
         {
@@ -605,6 +612,7 @@ static QEMUMachine pc_machine_v0_12 = {
     .desc = "Standard PC",
     .init = pc_init_pci_no_kvmclock,
     .max_cpus = 255,
+    .cpu_model = DEFAULT_X86CPU_MODEL,
     .compat_props = (GlobalProperty[]) {
         PC_COMPAT_0_12,
         {
@@ -639,6 +647,7 @@ static QEMUMachine pc_machine_v0_11 = {
     .desc = "Standard PC, qemu 0.11",
     .init = pc_init_pci_no_kvmclock,
     .max_cpus = 255,
+    .cpu_model = DEFAULT_X86CPU_MODEL,
     .compat_props = (GlobalProperty[]) {
         PC_COMPAT_0_11,
         {
@@ -661,6 +670,7 @@ static QEMUMachine pc_machine_v0_10 = {
     .desc = "Standard PC, qemu 0.10",
     .init = pc_init_pci_no_kvmclock,
     .max_cpus = 255,
+    .cpu_model = DEFAULT_X86CPU_MODEL,
     .compat_props = (GlobalProperty[]) {
         PC_COMPAT_0_11,
         {
@@ -694,6 +704,7 @@ static QEMUMachine isapc_machine = {
     .name = "isapc",
     .desc = "ISA-only PC",
     .init = pc_init_isa,
+    .cpu_model = "486",
     .max_cpus = 1,
     .compat_props = (GlobalProperty[]) {
         {
@@ -712,6 +723,7 @@ static QEMUMachine xenfv_machine = {
     .desc = "Xen Fully-virtualized PC",
     .init = pc_xen_hvm_init,
     .max_cpus = HVM_MAX_VCPUS,
+    .cpu_model = DEFAULT_X86CPU_MODEL,
     .default_machine_opts = "accel=xen",
     DEFAULT_MACHINE_OPTIONS,
 };
