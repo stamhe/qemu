@@ -896,6 +896,12 @@ typedef struct CPUX86State {
 
 #include "cpu-qom.h"
 
+#ifdef TARGET_X86_64
+#define DEFAULT_X86CPU_MODEL "qemu64"
+#else
+#define DEFAULT_X86CPU_MODEL "qemu32"
+#endif
+
 X86CPU *cpu_x86_init(const char *cpu_model);
 X86CPU *cpu_x86_create(const char *cpu_model, DeviceState *icc_bridge,
                        Error **errp);
