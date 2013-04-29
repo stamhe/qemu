@@ -4291,6 +4291,12 @@ int main(int argc, char **argv, char **envp)
 
     qdev_machine_init();
 
+    if (cpu_model) {
+        machine->cpu_model = cpu_model;
+    } else {
+        cpu_model = machine->cpu_model;
+    }
+
     QEMUMachineInitArgs args = { .ram_size = ram_size,
                                  .boot_device = (boot_devices[0] == '\0') ?
                                                 machine->boot_order :

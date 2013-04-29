@@ -44,6 +44,7 @@ typedef struct QEMUMachine {
     struct QEMUMachine *next;
     const char *hw_version;
     void (*hot_add_cpu)(const int64_t id, Error **errp);
+    const char *cpu_model;
 } QEMUMachine;
 
 int qemu_register_machine(QEMUMachine *m);
