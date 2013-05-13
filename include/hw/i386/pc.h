@@ -51,6 +51,7 @@ struct PcGuestInfo {
     unsigned dsdt_size;
     uint16_t pvpanic_port;
     FWCfgState *fw_cfg;
+    bool has_acpi_build;
 };
 
 /* parallel.c */
