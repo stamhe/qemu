@@ -29,6 +29,9 @@
 #include "exec/ioport.h"
 #include "hw/nvram/fw_cfg.h"
 #include "exec/address-spaces.h"
+//#include "sysbus.h"
+#include "hw/mem-hotplug/dimm.h"
+#include "qemu/config-file.h"
 
 //#define DEBUG
 
@@ -50,9 +53,12 @@
 
 #define PIIX4_PROC_BASE 0xaf00
 #define PIIX4_PROC_LEN 32
+#define PIIX4_MEM_BASE 0xaf80
+#define PIIX4_MEM_LEN 32
 
 #define PIIX4_PCI_HOTPLUG_STATUS 2
 #define PIIX4_CPU_HOTPLUG_STATUS 4
+#define PIIX4_MEM_HOTPLUG_STATUS 8
 
 struct pci_status {
     uint32_t up; /* deprecated, maintained for migration compatibility */
@@ -63,6 +69,22 @@ typedef struct CPUStatus {
     uint8_t sts[PIIX4_PROC_LEN];
 } CPUStatus;
 
+typedef struct MemStatus {
+    hwaddr  m_start;
+    hwaddr  m_len;
+    bool is_enabled;
+    bool is_inserting;
+    bool is_removing;
+    uint32_t ost_event;
+    uint32_t ost_status;
+} MemStatus;
+
+typedef struct mem_hotplug_state {
+    uint32_t selector;
+    uint32_t dev_count;
+    MemStatus *devs;
+} mem_hotplug_state;
+
 typedef struct PIIX4PMState {
     PCIDevice dev;
 
@@ -70,6 +92,7 @@ typedef struct PIIX4PMState {
     MemoryRegion io_gpe;
     MemoryRegion io_pci;
     MemoryRegion io_cpu;
+    MemoryRegion io_mem;
     ACPIREGS ar;
 
     APMState apm;
@@ -96,6 +119,9 @@ typedef struct PIIX4PMState {
     Notifier cpu_added_notifier;
 
     PcGuestInfo *guest_info;
+
+    Notifier mem_added_notifier;
+    mem_hotplug_state  gpe_mem;
 } PIIX4PMState;
 
 static void piix4_acpi_system_hot_add_init(MemoryRegion *parent,
@@ -115,7 +141,8 @@ static void pm_update_sci(PIIX4PMState *s)
                    ACPI_BITMASK_GLOBAL_LOCK_ENABLE |
                    ACPI_BITMASK_TIMER_ENABLE)) != 0) ||
         (((s->ar.gpe.sts[0] & s->ar.gpe.en[0]) &
-          (PIIX4_PCI_HOTPLUG_STATUS | PIIX4_CPU_HOTPLUG_STATUS)) != 0);
+          (PIIX4_PCI_HOTPLUG_STATUS | PIIX4_CPU_HOTPLUG_STATUS |
+          PIIX4_MEM_HOTPLUG_STATUS)) != 0);
 
     qemu_set_irq(s->irq, sci_level);
     /* schedule a timer interruption if needed */
@@ -706,6 +733,142 @@ static void piix4_init_cpu_status(CPUState *cpu, void *data)
     g->sts[id / 8] |= (1 << (id % 8));
 }
 
+static uint64_t piix4_hp_mem_read(void *opaque, hwaddr addr, unsigned int size)
+{
+    PIIX4PMState *s = opaque;
+    uint32_t val = 0;
+    mem_hotplug_state *mem_st = &s->gpe_mem;
+    MemStatus *mdev;
+
+    if (mem_st->selector >= mem_st->dev_count) {
+        return 0;
+    }
+
+    mdev = &mem_st->devs[mem_st->selector];
+    switch (addr) {
+        case 0x0: {
+            val = mdev->m_start;
+            break;
+        }
+        case 0x4: {
+            val = mdev->m_start >> 32;
+            break;
+        }
+        case 0x8: {
+            val = mdev->m_len;
+            break;
+        }
+        case 0xc: {
+            val = mdev->m_len >> 32;
+            break;
+        }
+        case 0x14: {
+            /* intf version */
+            break;
+        }
+        case 0x15: { /* pack and return is_* fields */
+            val |= mdev->is_enabled   ? 1: 0;
+            val |= mdev->is_inserting ? 2: 0;
+            val |= mdev->is_removing  ? 4: 0;
+            break;
+        }
+    }
+    fprintf(stderr, "memhp[0x%x] read 0x%x == 0x%llx\n", mem_st->selector, (unsigned int)addr, (unsigned long long)val);
+    return val;
+}
+
+static void piix4_hp_mem_write(void *opaque, hwaddr addr, uint64_t data,
+                             unsigned int size)
+{
+    PIIX4PMState *s = opaque;
+    mem_hotplug_state *mem_st = &s->gpe_mem;
+    MemStatus *mdev;
+
+    fprintf(stderr, "memhp wr %x: %x\n", (unsigned int)addr, (unsigned int) data);
+
+    if (!mem_st->dev_count) {
+        return;
+    }
+
+    switch (addr) {
+        case 0x0:
+        mem_st->selector = data;
+        break;
+        case 0x4: /* _OST event  */
+        if (mem_st->selector >= mem_st->dev_count) {
+            return;
+        }
+        mdev = &mem_st->devs[mem_st->selector];
+        if (data == 1) { /* mem device check /add/ */
+            mdev->is_inserting = false;
+        } else if (data == 3) { /* mem device removal */
+            mdev->is_removing = false;
+        }
+        mdev->ost_event = data;
+        break;
+        case 0x8: /* _OST status */
+        if (mem_st->selector >= mem_st->dev_count) {
+            return;
+        }
+        mdev = &mem_st->devs[mem_st->selector];
+        mdev->ost_status = data;
+        /* TODO: report async error */
+        /* TODO: implement VCPU removal on guest signal that CPU can be removed */
+        break;
+    }
+
+}
+static const MemoryRegionOps mem_hotplug_ops = {
+    .read = piix4_hp_mem_read,
+    .write = piix4_hp_mem_write,
+    .endianness = DEVICE_LITTLE_ENDIAN,
+    .valid = {
+        .min_access_size = 1,
+        .max_access_size = 4,
+    },
+};
+
+static void piix4_init_mem_status(PIIX4PMState *s)
+{
+    mem_hotplug_state *mem_st = &s->gpe_mem;
+    QemuOpts *opts = qemu_opts_find(qemu_find_opts("memory-opts"), NULL);
+
+    if (!opts) { /* no -m x,... was passed to cmd line so no men hotplug */
+        return;
+    }
+
+    mem_st->dev_count = qemu_opt_get_number(opts, "slots", 0);
+
+    if (!mem_st->dev_count) {
+        return;
+    }
+
+    mem_st->devs= g_malloc0 (sizeof(MemStatus) * mem_st->dev_count);
+}
+
+static void piix4_mem_added_req(Notifier *n, void *opaque)
+{
+    PIIX4PMState *s = container_of(n, PIIX4PMState, mem_added_notifier);
+    DimmDevice *dimm = DIMM(opaque);
+    mem_hotplug_state *mem_st = &s->gpe_mem;
+    MemStatus *mdev;
+
+    if (dimm->idx >= mem_st->dev_count) {
+        return;
+    }
+
+    mdev = &mem_st->devs[dimm->idx];
+
+    mdev->m_start = dimm->start;
+    mdev->m_len = dimm->size;
+    mdev->is_enabled = true;
+
+    /* do ACPI magic */
+    mdev->is_inserting = true;
+    s->ar.gpe.sts[0] |= PIIX4_MEM_HOTPLUG_STATUS;
+    pm_update_sci(s);
+}
+
 static int piix4_device_hotplug(DeviceState *qdev, PCIDevice *dev,
                                 PCIHotplugState state);
 
@@ -728,6 +891,13 @@ static void piix4_acpi_system_hot_add_init(MemoryRegion *parent,
     memory_region_add_subregion(parent, PIIX4_PROC_BASE, &s->io_cpu);
     s->cpu_added_notifier.notify = piix4_cpu_added_req;
     qemu_register_cpu_added_notifier(&s->cpu_added_notifier);
+
+    piix4_init_mem_status(s);
+    memory_region_init_io(&s->io_mem, &mem_hotplug_ops, s,
+                          "apci-mem-hotplug", PIIX4_MEM_LEN);
+    memory_region_add_subregion(parent, PIIX4_MEM_BASE, &s->io_mem);
+    s->mem_added_notifier.notify = piix4_mem_added_req;
+    qemu_register_mem_added_notifier(&s->mem_added_notifier);
 }
 
 static void enable_device(PIIX4PMState *s, int slot)

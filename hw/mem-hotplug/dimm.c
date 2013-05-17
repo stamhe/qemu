@@ -55,7 +55,7 @@ static void dimm_realize(DeviceState *dev, Error **errp)
     DimmDevice *dimm = DIMM(dev);
 
     new = g_malloc(sizeof(MemoryRegion));
-    memory_region_init_ram(new, OBJECT(dev), dev->id, dimm->size);
+    memory_region_init_ram(new, dev->id, dimm->size);
     vmstate_register_ram_global(new);
     memory_region_add_subregion(get_system_memory(), dimm->start, new);
     dimm->mr = new;
