@@ -1653,6 +1653,8 @@ show device tree
 show qdev device model list
 @item info roms
 show roms
+@item info memory-total
+show memory-total
 @item info tpm
 show the TPM device
 @end table
