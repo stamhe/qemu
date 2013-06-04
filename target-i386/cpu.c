@@ -1473,6 +1473,49 @@ static void x86_cpu_get_feature_words(Object *obj, Visitor *v, void *opaque,
     error_propagate(errp, err);
 }
 
+static void x86_get_hv_spinlocks(Object *obj, Visitor *v, void *opaque,
+                                 const char *name, Error **errp)
+{
+    X86CPU *cpu = X86_CPU(obj);
+    int64_t value = cpu->hyperv_spinlock_attempts;
+
+    visit_type_int(v, &value, name, errp);
+}
+
+static void x86_set_hv_spinlocks(Object *obj, Visitor *v, void *opaque,
+                                 const char *name, Error **errp)
+{
+    const int64_t min = 0xFFF;
+    const int64_t max = UINT_MAX;
+    X86CPU *cpu = X86_CPU(obj);
+    int64_t value;
+
+    visit_type_int(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+
+    if (value < min || value > max) {
+        error_setg(errp, "Property %s.%s doesn't take value %" PRId64
+                  " (minimum: %" PRId64 ", maximum: %" PRId64 ")",
+                  object_get_typename(obj), name ? name : "null",
+                  value, min, max);
+        return;
+    }
+    cpu->hyperv_spinlock_attempts = value;
+}
+
+static PropertyInfo qdev_prop_spinlocks = {
+    .name  = "int",
+    .get   = x86_get_hv_spinlocks,
+    .set   = x86_set_hv_spinlocks,
+};
+
+static Property cpu_x86_properties[] = {
+    { .name  = "hv-spinlocks", .info  = &qdev_prop_spinlocks },
+    DEFINE_PROP_END_OF_LIST(),
+};
+
 static int cpu_x86_find_by_name(x86_def_t *x86_cpu_def, const char *name)
 {
     x86_def_t *def;
@@ -1586,6 +1629,7 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
             } else if (!strcmp(featurestr, "hv-spinlocks")) {
                 char *err;
                 const int min = 0xFFF;
+                char num[32];
                 numvalue = strtoul(val, &err, 0);
                 if (!*val || *err) {
                     error_setg(errp, "bad numerical value %s", val);
@@ -1597,7 +1641,8 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
                             min);
                     numvalue = min;
                 }
-                cpu->hyperv_spinlock_attempts = numvalue;
+                snprintf(num, sizeof(num), "%" PRId32, numvalue);
+                object_property_parse(OBJECT(cpu), num, featurestr, errp);
             } else {
                 error_setg(errp, "unrecognized feature %s", featurestr);
                 goto out;
@@ -2521,6 +2566,7 @@ static void x86_cpu_common_class_init(ObjectClass *oc, void *data)
     xcc->parent_realize = dc->realize;
     dc->realize = x86_cpu_realizefn;
     dc->bus_type = TYPE_ICC_BUS;
+    dc->props = cpu_x86_properties;
 
     xcc->parent_reset = cc->reset;
     cc->reset = x86_cpu_reset;
