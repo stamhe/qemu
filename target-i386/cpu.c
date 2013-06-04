@@ -1290,22 +1290,6 @@ static PropertyInfo qdev_prop_stepping = {
 #define DEFINE_PROP_STEPPING(_n)                                               \
     DEFINE_PROP(_n, X86CPU, env.cpuid_version, qdev_prop_stepping, uint32_t)
 
-static void x86_cpuid_get_xlevel(Object *obj, Visitor *v, void *opaque,
-                                 const char *name, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-
-    visit_type_uint32(v, &cpu->env.cpuid_xlevel, name, errp);
-}
-
-static void x86_cpuid_set_xlevel(Object *obj, Visitor *v, void *opaque,
-                                 const char *name, Error **errp)
-{
-    X86CPU *cpu = X86_CPU(obj);
-
-    visit_type_uint32(v, &cpu->env.cpuid_xlevel, name, errp);
-}
-
 static char *x86_cpuid_get_vendor(Object *obj, Error **errp)
 {
     X86CPU *cpu = X86_CPU(obj);
@@ -1488,6 +1472,7 @@ static Property cpu_x86_properties[] = {
     DEFINE_PROP_MODEL("model"),
     DEFINE_PROP_STEPPING("stepping"),
     DEFINE_PROP_UINT32("level", X86CPU, env.cpuid_level, 0),
+    DEFINE_PROP_UINT32("xlevel", X86CPU, env.cpuid_xlevel, 0),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -2467,9 +2452,6 @@ static void x86_cpu_initfn(Object *obj)
     cs->env_ptr = env;
     cpu_exec_init(env);
 
-    object_property_add(obj, "xlevel", "int",
-                        x86_cpuid_get_xlevel,
-                        x86_cpuid_set_xlevel, NULL, NULL, NULL);
     object_property_add_str(obj, "vendor",
                             x86_cpuid_get_vendor,
                             x86_cpuid_set_vendor, NULL);
