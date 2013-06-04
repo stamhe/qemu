@@ -1279,7 +1279,8 @@ static PropertyInfo qdev_prop_stepping = {
     .set   = x86_cpuid_version_set_stepping,
 };
 
-static char *x86_cpuid_get_vendor(Object *obj, Error **errp)
+static void x86_cpuid_get_vendor(Object *obj, Visitor *v, void *opaque,
+                                 const char *name, Error **errp)
 {
     X86CPU *cpu = X86_CPU(obj);
     CPUX86State *env = &cpu->env;
@@ -1288,15 +1289,22 @@ static char *x86_cpuid_get_vendor(Object *obj, Error **errp)
     value = (char *)g_malloc(CPUID_VENDOR_SZ + 1);
     x86_cpu_vendor_words2str(value, env->cpuid_vendor1, env->cpuid_vendor2,
                              env->cpuid_vendor3);
-    return value;
+    visit_type_str(v, &value, name, errp);
+    g_free(value);
 }
 
-static void x86_cpuid_set_vendor(Object *obj, const char *value,
-                                 Error **errp)
+static void x86_cpuid_set_vendor(Object *obj, Visitor *v, void *opaque,
+                                 const char *name, Error **errp)
 {
     X86CPU *cpu = X86_CPU(obj);
     CPUX86State *env = &cpu->env;
+    char *value;
     int i;
+
+    visit_type_str(v, &value, name, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
 
     if (strlen(value) != CPUID_VENDOR_SZ) {
         error_set(errp, QERR_PROPERTY_VALUE_BAD, "",
@@ -1312,7 +1320,14 @@ static void x86_cpuid_set_vendor(Object *obj, const char *value,
         env->cpuid_vendor2 |= ((uint8_t)value[i + 4]) << (8 * i);
         env->cpuid_vendor3 |= ((uint8_t)value[i + 8]) << (8 * i);
     }
+    g_free(value);
 }
+
+static PropertyInfo qdev_prop_vendor = {
+    .name  = "string",
+    .get   = x86_cpuid_get_vendor,
+    .set   = x86_cpuid_set_vendor,
+};
 
 static char *x86_cpuid_get_model_id(Object *obj, Error **errp)
 {
@@ -1505,6 +1520,7 @@ static Property cpu_x86_properties[] = {
     { .name = "family", .info = &qdev_prop_family },
     { .name = "model", .info = &qdev_prop_model },
     { .name = "stepping", .info = &qdev_prop_stepping },
+    { .name = "vendor", .info  = &qdev_prop_vendor },
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -2465,9 +2481,6 @@ static void x86_cpu_initfn(Object *obj)
     cs->env_ptr = env;
     cpu_exec_init(env);
 
-    object_property_add_str(obj, "vendor",
-                            x86_cpuid_get_vendor,
-                            x86_cpuid_set_vendor, NULL);
     object_property_add_str(obj, "model-id",
                             x86_cpuid_get_model_id,
                             x86_cpuid_set_model_id, NULL);
