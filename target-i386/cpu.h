@@ -549,6 +549,10 @@ typedef uint32_t FeatureWordArray[FEATURE_WORDS];
 #define CPUID_MWAIT_IBE     (1 << 1) /* Interrupts can exit capability */
 #define CPUID_MWAIT_EMX     (1 << 0) /* enumeration supported */
 
+#ifndef HYPERV_SPINLOCK_NEVER_RETRY
+#define HYPERV_SPINLOCK_NEVER_RETRY             0xFFFFFFFF
+#endif
+
 #define EXCP00_DIVZ	0
 #define EXCP01_DB	1
 #define EXCP02_NMI	2
@@ -845,6 +849,9 @@ typedef struct CPUX86State {
     FeatureWordArray features;
     uint32_t cpuid_model[12];
     uint32_t cpuid_apic_id;
+    bool hyperv_vapic;
+    bool hyperv_relaxed_timing;
+    int hyperv_spinlock_attempts;
 
     /* MTRRs */
     uint64_t mtrr_fixed[11];
