@@ -1427,6 +1427,14 @@ static void x86_cpuid_set_tsc_freq(Object *obj, Visitor *v, void *opaque,
     cpu->env.tsc_khz = value / 1000;
 }
 
+static PropertyInfo qdev_prop_tsc_freq = {
+    .name  = "int64",
+    .get   = x86_cpuid_get_tsc_freq,
+    .set   = x86_cpuid_set_tsc_freq,
+};
+#define DEFINE_PROP_TSC_FREQ(_n)                                               \
+    DEFINE_PROP(_n, X86CPU, env.tsc_khz, qdev_prop_tsc_freq, int32_t)
+
 static void x86_cpuid_get_apic_id(Object *obj, Visitor *v, void *opaque,
                                   const char *name, Error **errp)
 {
@@ -1509,6 +1517,7 @@ static Property cpu_x86_properties[] = {
     DEFINE_PROP_UINT32("xlevel", X86CPU, env.cpuid_xlevel, 0),
     DEFINE_PROP_VENDOR("vendor"),
     DEFINE_PROP_MODEL_ID("model-id"),
+    DEFINE_PROP_TSC_FREQ("tsc-frequency"),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -2488,9 +2497,6 @@ static void x86_cpu_initfn(Object *obj)
     cs->env_ptr = env;
     cpu_exec_init(env);
 
-    object_property_add(obj, "tsc-frequency", "int",
-                        x86_cpuid_get_tsc_freq,
-                        x86_cpuid_set_tsc_freq, NULL, NULL, NULL);
     object_property_add(obj, "apic-id", "int",
                         x86_cpuid_get_apic_id,
                         x86_cpuid_set_apic_id, NULL, NULL, NULL);
