@@ -1190,6 +1190,12 @@ static void x86_cpuid_version_set_family(Object *obj, Visitor *v, void *opaque,
     }
 }
 
+static PropertyInfo qdev_prop_family = {
+    .name  = "uint32",
+    .get   = x86_cpuid_version_get_family,
+    .set   = x86_cpuid_version_set_family,
+};
+
 static void x86_cpuid_version_get_model(Object *obj, Visitor *v, void *opaque,
                                         const char *name, Error **errp)
 {
@@ -1484,6 +1490,7 @@ static Property cpu_x86_properties[] = {
     DEFINE_PROP_BOOL("enforce", X86CPU, enforce_cpuid, false),
     DEFINE_PROP_UINT32("level", X86CPU, env.cpuid_level, 0),
     DEFINE_PROP_UINT32("xlevel", X86CPU, env.cpuid_xlevel, 0),
+    { .name = "family", .info = &qdev_prop_family },
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -2444,9 +2451,6 @@ static void x86_cpu_initfn(Object *obj)
     cs->env_ptr = env;
     cpu_exec_init(env);
 
-    object_property_add(obj, "family", "int",
-                        x86_cpuid_version_get_family,
-                        x86_cpuid_version_set_family, NULL, NULL, NULL);
     object_property_add(obj, "model", "int",
                         x86_cpuid_version_get_model,
                         x86_cpuid_version_set_model, NULL, NULL, NULL);
