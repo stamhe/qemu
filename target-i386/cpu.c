@@ -1441,7 +1441,8 @@ static PropertyInfo qdev_prop_vendor = {
     .set   = x86_cpuid_set_vendor,
 };
 
-static char *x86_cpuid_get_model_id(Object *obj, Error **errp)
+static void x86_cpuid_get_model_id(Object *obj, Visitor *v, void *opaque,
+                                   const char *name, Error **errp)
 {
     X86CPU *cpu = X86_CPU(obj);
     CPUX86State *env = &cpu->env;
@@ -1453,18 +1454,21 @@ static char *x86_cpuid_get_model_id(Object *obj, Error **errp)
         value[i] = env->cpuid_model[i >> 2] >> (8 * (i & 3));
     }
     value[48] = '\0';
-    return value;
+    visit_type_str(v, &value, name, errp);
+    g_free(value);
 }
 
-static void x86_cpuid_set_model_id(Object *obj, const char *model_id,
-                                   Error **errp)
+static void x86_cpuid_set_model_id(Object *obj, Visitor *v, void *opaque,
+                                   const char *name, Error **errp)
 {
     X86CPU *cpu = X86_CPU(obj);
     CPUX86State *env = &cpu->env;
     int c, len, i;
+    char *model_id;
 
-    if (model_id == NULL) {
-        model_id = "";
+    visit_type_str(v, &model_id, name, errp);
+    if (error_is_set(errp)) {
+        return;
     }
     len = strlen(model_id);
     memset(env->cpuid_model, 0, 48);
@@ -1476,7 +1480,14 @@ static void x86_cpuid_set_model_id(Object *obj, const char *model_id,
         }
         env->cpuid_model[i >> 2] |= c << (8 * (i & 3));
     }
+    g_free(model_id);
 }
+
+static PropertyInfo qdev_prop_model_id = {
+    .name  = "string",
+    .get   = x86_cpuid_get_model_id,
+    .set   = x86_cpuid_set_model_id,
+};
 
 static void x86_cpuid_get_tsc_freq(Object *obj, Visitor *v, void *opaque,
                                    const char *name, Error **errp)
@@ -2616,9 +2627,6 @@ static void x86_cpu_initfn(Object *obj)
     cs->env_ptr = env;
     cpu_exec_init(env);
 
-    object_property_add_str(obj, "model-id",
-                            x86_cpuid_get_model_id,
-                            x86_cpuid_set_model_id, NULL);
     object_property_add(obj, "tsc-frequency", "int",
                         x86_cpuid_get_tsc_freq,
                         x86_cpuid_set_tsc_freq, NULL, NULL, NULL);
@@ -2687,6 +2695,7 @@ static Property x86_cpu_properties[] = {
     { .name = "model", .info = &qdev_prop_model },
     { .name = "stepping", .info = &qdev_prop_stepping },
     { .name = "vendor", .info  = &qdev_prop_vendor },
+    { .name  = "model-id", .info  = &qdev_prop_model_id },
     DEFINE_PROP_END_OF_LIST()
 };
 
