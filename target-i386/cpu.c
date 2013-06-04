@@ -1408,6 +1408,12 @@ static void x86_cpuid_set_tsc_freq(Object *obj, Visitor *v, void *opaque,
     cpu->env.tsc_khz = value / 1000;
 }
 
+static PropertyInfo qdev_prop_tsc_freq = {
+    .name  = "int64",
+    .get   = x86_cpuid_get_tsc_freq,
+    .set   = x86_cpuid_set_tsc_freq,
+};
+
 static void x86_cpuid_get_apic_id(Object *obj, Visitor *v, void *opaque,
                                   const char *name, Error **errp)
 {
@@ -1533,6 +1539,7 @@ static Property cpu_x86_properties[] = {
     { .name = "stepping", .info = &qdev_prop_stepping },
     { .name = "vendor", .info  = &qdev_prop_vendor },
     { .name  = "model-id", .info  = &qdev_prop_model_id },
+    { .name  = "tsc-frequency", .info  = &qdev_prop_tsc_freq },
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -2493,9 +2500,6 @@ static void x86_cpu_initfn(Object *obj)
     cs->env_ptr = env;
     cpu_exec_init(env);
 
-    object_property_add(obj, "tsc-frequency", "int",
-                        x86_cpuid_get_tsc_freq,
-                        x86_cpuid_set_tsc_freq, NULL, NULL, NULL);
     object_property_add(obj, "apic-id", "int",
                         x86_cpuid_get_apic_id,
                         x86_cpuid_set_apic_id, NULL, NULL, NULL);
