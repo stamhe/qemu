@@ -1195,6 +1195,14 @@ static void x86_cpuid_version_set_family(Object *obj, Visitor *v, void *opaque,
     }
 }
 
+static PropertyInfo qdev_prop_family = {
+    .name  = "uint32",
+    .get   = x86_cpuid_version_get_family,
+    .set   = x86_cpuid_version_set_family,
+};
+#define DEFINE_PROP_FAMILY(_n)                                                 \
+    DEFINE_PROP(_n, X86CPU, env.cpuid_version, qdev_prop_family, uint32_t)
+
 static void x86_cpuid_version_get_model(Object *obj, Visitor *v, void *opaque,
                                         const char *name, Error **errp)
 {
@@ -1474,6 +1482,11 @@ static void x86_cpu_get_feature_words(Object *obj, Visitor *v, void *opaque,
     visit_type_X86CPUFeatureWordInfoList(v, &list, "feature-words", &err);
     error_propagate(errp, err);
 }
+
+static Property cpu_x86_properties[] = {
+    DEFINE_PROP_FAMILY("family"),
+    DEFINE_PROP_END_OF_LIST(),
+};
 
 static int cpu_x86_find_by_name(x86_def_t *x86_cpu_def, const char *name)
 {
@@ -2451,9 +2464,6 @@ static void x86_cpu_initfn(Object *obj)
     cs->env_ptr = env;
     cpu_exec_init(env);
 
-    object_property_add(obj, "family", "int",
-                        x86_cpuid_version_get_family,
-                        x86_cpuid_version_set_family, NULL, NULL, NULL);
     object_property_add(obj, "model", "int",
                         x86_cpuid_version_get_model,
                         x86_cpuid_version_set_model, NULL, NULL, NULL);
@@ -2514,6 +2524,7 @@ static void x86_cpu_common_class_init(ObjectClass *oc, void *data)
     xcc->parent_realize = dc->realize;
     dc->realize = x86_cpu_realizefn;
     dc->bus_type = TYPE_ICC_BUS;
+    dc->props = cpu_x86_properties;
 
     xcc->parent_reset = cc->reset;
     cc->reset = x86_cpu_reset;
