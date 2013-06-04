@@ -1231,6 +1231,12 @@ static void x86_cpuid_version_set_model(Object *obj, Visitor *v, void *opaque,
     env->cpuid_version |= ((value & 0xf) << 4) | ((value >> 4) << 16);
 }
 
+static PropertyInfo qdev_prop_model = {
+    .name  = "uint32",
+    .get   = x86_cpuid_version_get_model,
+    .set   = x86_cpuid_version_set_model,
+};
+
 static void x86_cpuid_version_get_stepping(Object *obj, Visitor *v,
                                            void *opaque, const char *name,
                                            Error **errp)
@@ -1491,6 +1497,7 @@ static Property cpu_x86_properties[] = {
     DEFINE_PROP_UINT32("level", X86CPU, env.cpuid_level, 0),
     DEFINE_PROP_UINT32("xlevel", X86CPU, env.cpuid_xlevel, 0),
     { .name = "family", .info = &qdev_prop_family },
+    { .name = "model", .info = &qdev_prop_model },
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -2451,9 +2458,6 @@ static void x86_cpu_initfn(Object *obj)
     cs->env_ptr = env;
     cpu_exec_init(env);
 
-    object_property_add(obj, "model", "int",
-                        x86_cpuid_version_get_model,
-                        x86_cpuid_version_set_model, NULL, NULL, NULL);
     object_property_add(obj, "stepping", "int",
                         x86_cpuid_version_get_stepping,
                         x86_cpuid_version_set_stepping, NULL, NULL, NULL);
