@@ -1344,7 +1344,8 @@ static PropertyInfo qdev_prop_vendor = {
     .info  = &qdev_prop_vendor                                                 \
 }
 
-static char *x86_cpuid_get_model_id(Object *obj, Error **errp)
+static void x86_cpuid_get_model_id(Object *obj, Visitor *v, void *opaque,
+                                   const char *name, Error **errp)
 {
     X86CPU *cpu = X86_CPU(obj);
     CPUX86State *env = &cpu->env;
@@ -1356,18 +1357,21 @@ static char *x86_cpuid_get_model_id(Object *obj, Error **errp)
         value[i] = env->cpuid_model[i >> 2] >> (8 * (i & 3));
     }
     value[48] = '\0';
-    return value;
+    visit_type_str(v, &value, name, errp);
+    g_free(value);
 }
 
-static void x86_cpuid_set_model_id(Object *obj, const char *model_id,
-                                   Error **errp)
+static void x86_cpuid_set_model_id(Object *obj, Visitor *v, void *opaque,
+                                   const char *name, Error **errp)
 {
     X86CPU *cpu = X86_CPU(obj);
     CPUX86State *env = &cpu->env;
     int c, len, i;
+    char *model_id;
 
-    if (model_id == NULL) {
-        model_id = "";
+    visit_type_str(v, &model_id, name, errp);
+    if (error_is_set(errp)) {
+        return;
     }
     len = strlen(model_id);
     memset(env->cpuid_model, 0, 48);
@@ -1379,6 +1383,17 @@ static void x86_cpuid_set_model_id(Object *obj, const char *model_id,
         }
         env->cpuid_model[i >> 2] |= c << (8 * (i & 3));
     }
+    g_free(model_id);
+}
+
+static PropertyInfo qdev_prop_model_id = {
+    .name  = "string",
+    .get   = x86_cpuid_get_model_id,
+    .set   = x86_cpuid_set_model_id,
+};
+#define DEFINE_PROP_MODEL_ID(_n) {                                             \
+    .name  = _n,                                                               \
+    .info  = &qdev_prop_model_id                                               \
 }
 
 static void x86_cpuid_get_tsc_freq(Object *obj, Visitor *v, void *opaque,
@@ -1493,6 +1508,7 @@ static Property cpu_x86_properties[] = {
     DEFINE_PROP_UINT32("level", X86CPU, env.cpuid_level, 0),
     DEFINE_PROP_UINT32("xlevel", X86CPU, env.cpuid_xlevel, 0),
     DEFINE_PROP_VENDOR("vendor"),
+    DEFINE_PROP_MODEL_ID("model-id"),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -2472,9 +2488,6 @@ static void x86_cpu_initfn(Object *obj)
     cs->env_ptr = env;
     cpu_exec_init(env);
 
-    object_property_add_str(obj, "model-id",
-                            x86_cpuid_get_model_id,
-                            x86_cpuid_set_model_id, NULL);
     object_property_add(obj, "tsc-frequency", "int",
                         x86_cpuid_get_tsc_freq,
                         x86_cpuid_set_tsc_freq, NULL, NULL, NULL);
