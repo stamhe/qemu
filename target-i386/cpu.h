@@ -852,6 +852,8 @@ typedef struct CPUX86State {
     bool hyperv_vapic;
     bool hyperv_relaxed_timing;
     int hyperv_spinlock_attempts;
+    bool check_cpuid;
+    bool enforce_cpuid;
 
     /* MTRRs */
     uint64_t mtrr_fixed[11];
