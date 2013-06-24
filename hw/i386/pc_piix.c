@@ -184,8 +184,7 @@ static void pc_init1(MemoryRegion *system_memory,
             pci_bus_set_route_irq_fn(pci_bus, piix3_route_intx_pin_to_irq);
         }
         piix3->pic = gsi;
-        isa_bus = DO_UPCAST(ISABus, qbus,
-                qdev_get_child_bus(&piix3->dev.qdev, "isa.0"));
+        isa_bus = ISA_BUS(qdev_get_child_bus(&piix3->dev.qdev, "isa.0"));
 
         piix3_devfn = piix3->dev.devfn;
 

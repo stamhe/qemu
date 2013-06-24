@@ -8,6 +8,7 @@
 #include "hw/block/fdc.h"
 #include "net/net.h"
 #include "hw/i386/ioapic.h"
+#include "hw/pci-host/piix_pci.h"
 
 /* PC-style peripherals (also used by other machines).  */
 
@@ -123,9 +124,6 @@ void piix4_smbus_register_device(SMBusDevice *dev, uint8_t addr);
 extern int no_hpet;
 
 /* piix_pci.c */
-struct PCII440FXState;
-typedef struct PCII440FXState PCII440FXState;
-
 PCIBus *i440fx_init(PCII440FXState **pi440fx_state, int *piix_devfn,
                     ISABus **isa_bus, qemu_irq *pic,
                     MemoryRegion *address_space_mem,
