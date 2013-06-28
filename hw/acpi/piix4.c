@@ -69,7 +69,13 @@ typedef struct CPUStatus {
 } CPUStatus;
 
 typedef struct MemStatus {
-    uint8_t mems_sts[PIIX4_MEM_LEN];
+#define MEM_OFFLINED 0
+#define MEM_ONLINED 1
+#define MEM_OFFLINING 2
+#define MEM_ONLINING 4
+    hwaddr  m_start;
+    hwaddr  m_len;
+    uint8_t status;
 } MemStatus;
 
 typedef struct PIIX4PMState {
@@ -677,34 +683,59 @@ static void piix4_init_cpu_status(CPUState *cpu, void *data)
     g->sts[id / 8] |= (1 << (id % 8));
 }
 
-static uint32_t mem_status_readb(void *opaque, uint32_t addr)
+static uint64_t mem_status_read(void *opaque, hwaddr addr, unsigned int size)
 {
     PIIX4PMState *s = opaque;
     uint32_t val = 0;
     MemStatus *g = &s->gpe_mem;
-    if (addr < PIIX4_MEM_LEN) {
-        val = (uint32_t) g->mems_sts[addr];
+    switch (addr) {
+        case 0x0: {
+            val = g->m_start;
+            break;
+        }
+        case 0x4: {
+            val = g->m_start >> 32;
+            break;
+        }
+        case 0x8: {
+            val = g->m_len;
+            break;
+        }
+        case 0xc: {
+            val = g->m_len >> 32;
+            break;
+        }
+        case 0x10: {
+            val = g->status;
+            break;
+        }
     }
-    PIIX4_DPRINTF(stderr, "memhp read %x == %x\n", addr, val);
+    fprintf(stderr, "memhp read 0x%x == 0x%llx\n", (unsigned int)addr, (unsigned long long)val);
     return val;
 }
 
+static void mem_status_write(void *opaque, hwaddr addr, uint64_t data,
+                             unsigned int size)
+{
+    fprintf(stderr, "memhp wr %x: %x\n", (unsigned int)addr, (unsigned int) data);
+
+    /* TODO: implement VCPU removal on guest signal that CPU can be removed */
+}
 static const MemoryRegionOps mem_hotplug_ops = {
-    .old_portio = (MemoryRegionPortio[]) {
-        {
-            .offset = 0,   .len = PIIX4_MEM_LEN, .size = 1,
-            .read = mem_status_readb,
-        },
-        PORTIO_END_OF_LIST()
-    },
+    .read = mem_status_read,
+    .write = mem_status_write,
     .endianness = DEVICE_LITTLE_ENDIAN,
+    .valid = {
+        .min_access_size = 1,
+        .max_access_size = 4,
+    },
 };
 
 static void piix4_init_mem_status(PIIX4PMState *s)
 {
     int i;
     for (i = 0; i < PIIX4_MEM_LEN; i++) {
-        s->gpe_mem.mems_sts[i] = 0;
+        s->gpe_mem.status = MEM_OFFLINED;
     }
 }
 
@@ -782,7 +813,7 @@ static void enable_mem_device(PIIX4PMState *s, int memdevice)
 {
     MemStatus *g = &s->gpe_mem;
     s->ar.gpe.sts[0] |= PIIX4_MEM_HOTPLUG_STATUS;
-    g->mems_sts[memdevice/8] |= (1 << (memdevice%8));
+    g->status |= MEM_ONLINING;
 }
 
 static int piix4_mem_hotplug(DeviceState *qdev, DimmDevice *dev, int
@@ -791,8 +822,11 @@ static int piix4_mem_hotplug(DeviceState *qdev, DimmDevice *dev, int
     PCIDevice *pci_dev = DO_UPCAST(PCIDevice, qdev, qdev);
     PIIX4PMState *s = DO_UPCAST(PIIX4PMState, dev, pci_dev);
     DimmDevice *slot = DIMM(dev);
+    MemStatus *g = &s->gpe_mem;
 
     if (add) {
+	g->m_start = slot->start;
+	g->m_len = slot->size;
         enable_mem_device(s, slot->idx);
     }
     pm_update_sci(s);
