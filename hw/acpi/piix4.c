@@ -718,7 +718,11 @@ static uint64_t hp_mem_read(void *opaque, hwaddr addr, unsigned int size)
             val = mdev->m_len >> 32;
             break;
         }
-        case 0x11: { /* pack and return is_* fields */
+        case 0x14: {
+            /* intf version */
+            break;
+        }
+        case 0x15: { /* pack and return is_* fields */
             val |= mdev->is_enabled   ? 1: 0;
             val |= mdev->is_inserting ? 2: 0;
             val |= mdev->is_removing  ? 4: 0;
