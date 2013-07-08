@@ -69,13 +69,11 @@ typedef struct CPUStatus {
 } CPUStatus;
 
 typedef struct MemStatus {
-#define MEM_OFFLINED 0
-#define MEM_ONLINED 1
-#define MEM_OFFLINING 2
-#define MEM_ONLINING 4
     hwaddr  m_start;
     hwaddr  m_len;
-    uint8_t status;
+    bool is_enabled;
+    bool is_inserting;
+    bool is_removing;
 } MemStatus;
 
 typedef struct mem_hotplug_state {
@@ -718,8 +716,10 @@ static uint64_t hp_mem_read(void *opaque, hwaddr addr, unsigned int size)
             val = mdev->m_len >> 32;
             break;
         }
-        case 0x10: {
-            val = mdev->status;
+        case 0x11: { /* pack and return is_* fields */
+            val |= mdev->is_enabled   ? 1: 0;
+            val |= mdev->is_inserting ? 2: 0;
+            val |= mdev->is_removing  ? 4: 0;
             break;
         }
     }
@@ -842,7 +842,8 @@ static int piix4_mem_hotplug(DeviceState *qdev, DimmDevice *dev, int
     if (add) {
         mdev->m_start = slot->start;
         mdev->m_len = slot->size;
-        mdev->status |= MEM_ONLINING;
+        mdev->is_enabled = true;
+        mdev->is_inserting = true;
         s->ar.gpe.sts[0] |= PIIX4_MEM_HOTPLUG_STATUS;
     }
     pm_update_sci(s);
