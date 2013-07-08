@@ -74,6 +74,8 @@ typedef struct MemStatus {
     bool is_enabled;
     bool is_inserting;
     bool is_removing;
+    uint32_t ost_event;
+    uint32_t ost_status;
 } MemStatus;
 
 typedef struct mem_hotplug_state {
@@ -732,14 +734,37 @@ static void hp_mem_write(void *opaque, hwaddr addr, uint64_t data,
 {
     PIIX4PMState *s = opaque;
     mem_hotplug_state *mem_st = &s->gpe_mem;
+    MemStatus *mdev;
 
     fprintf(stderr, "memhp wr %x: %x\n", (unsigned int)addr, (unsigned int) data);
 
-    if ((addr == 0) && (size == sizeof(uint32_t))) {
+    switch (addr) {
+        case 0x0:
         mem_st->selector = data;
+        break;
+        case 0x4: /* _OST event  */
+        if (mem_st->selector >= mem_st->dev_count) {
+            return;
+        }
+        mdev = &mem_st->devs[mem_st->selector];
+        if (data == 1) { /* mem device check /add/ */
+            mdev->is_inserting = false;
+        } else if (data == 3) { /* mem device removal */
+            mdev->is_removing = false;
+        }
+        mdev->ost_event = data;
+        break;
+        case 0x8: /* _OST status */
+        if (mem_st->selector >= mem_st->dev_count) {
+            return;
+        }
+        mdev = &mem_st->devs[mem_st->selector];
+        mdev->ost_status = data;
+        /* TODO: report async error */
+        /* TODO: implement VCPU removal on guest signal that CPU can be removed */
+        break;
     }
 
-    /* TODO: implement VCPU removal on guest signal that CPU can be removed */
 }
 static const MemoryRegionOps mem_hotplug_ops = {
     .read = hp_mem_read,
