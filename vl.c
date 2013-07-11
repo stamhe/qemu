@@ -2947,7 +2947,7 @@ int main(int argc, char **argv, char **envp)
     module_call_init(MODULE_INIT_MACHINE);
     machine = find_default_machine();
     cpu_model = NULL;
-    ram_size = 0;
+    ram_size = DEFAULT_RAM_SIZE * 1024 * 1024;
     snapshot = 0;
     cyls = heads = secs = 0;
     translation = BIOS_ATA_TRANSLATION_AUTO;
@@ -4062,11 +4062,6 @@ int main(int argc, char **argv, char **envp)
     if (pid_file && qemu_create_pidfile(pid_file) != 0) {
         os_pidfile_error();
         exit(1);
-    }
-
-    /* init the memory */
-    if (ram_size == 0) {
-        ram_size = DEFAULT_RAM_SIZE * 1024 * 1024;
     }
 
     if (qemu_opts_foreach(qemu_find_opts("device"), device_help_func, NULL, 0)
