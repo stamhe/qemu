@@ -516,6 +516,27 @@ static QemuOptsList qemu_realtime_opts = {
     },
 };
 
+static QemuOptsList qemu_mem_opts = {
+    .name = "memory-opts",
+    .implied_opt_name = "mem",
+    .head = QTAILQ_HEAD_INITIALIZER(qemu_mem_opts.head),
+    .desc = {
+        {
+            .name = "mem",
+            .type = QEMU_OPT_SIZE,
+        },
+        {
+            .name = "slots",
+            .type = QEMU_OPT_NUMBER,
+        },
+        {
+            .name = "maxmem",
+            .type = QEMU_OPT_SIZE,
+        },
+        { /* end of list */ }
+    },
+};
+
 const char *qemu_get_vm_name(void)
 {
     return qemu_name;
@@ -2933,6 +2954,7 @@ int main(int argc, char **argv, char **envp)
     qemu_add_opts(&qemu_object_opts);
     qemu_add_opts(&qemu_tpmdev_opts);
     qemu_add_opts(&qemu_realtime_opts);
+    qemu_add_opts(&qemu_mem_opts);
 
     runstate_init();
 
@@ -3224,21 +3246,34 @@ int main(int argc, char **argv, char **envp)
                 exit(0);
                 break;
             case QEMU_OPTION_m: {
-                int64_t value;
                 uint64_t sz;
-                char *end;
+                const char *end;
+                char *s;
 
-                value = strtosz(optarg, &end);
-                if (value < 0 || *end) {
-                    fprintf(stderr, "qemu: invalid ram size: %s\n", optarg);
+                opts = qemu_opts_parse(qemu_find_opts("memory-opts"),
+                                       optarg, 1);
+                if (!opts) {
                     exit(1);
                 }
-                sz = QEMU_ALIGN_UP((uint64_t)value, 8192);
+
+                /* fixup legacy sugffix-less format */
+                end = qemu_opt_get(opts, "mem");
+                if (g_ascii_isdigit(end[strlen(end) - 1])) {
+                    s = g_strconcat(end, "M", NULL);
+                    qemu_opt_set(opts, "mem", s);
+                    g_free(s);
+                }
+
+                sz = QEMU_ALIGN_UP(qemu_opt_get_size(opts, "mem", 0), 8192);
                 ram_size = sz;
                 if (ram_size != sz) {
                     fprintf(stderr, "qemu: ram size too large\n");
                     exit(1);
                 }
+                /* store aligned value for future use */
+                s = g_strdup_printf("%" PRIu64, sz);
+                qemu_opt_set(opts, "mem", s);
+                g_free(s);
                 break;
             }
 #ifdef CONFIG_TPM
