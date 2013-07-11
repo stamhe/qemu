@@ -210,8 +210,13 @@ use is discouraged as it may be removed from future versions.
 ETEXI
 
 DEF("m", HAS_ARG, QEMU_OPTION_m,
-    "-m megs         set virtual RAM size to megs MB [default="
-    stringify(DEFAULT_RAM_SIZE) "]\n", QEMU_ARCH_ALL)
+    "-m [mem=]megs[,slots=n,maxmem=size]\n"
+    "                set virtual RAM size to megs MB [default="
+    stringify(DEFAULT_RAM_SIZE) "]\n"
+    "                mem=start-up memory amount\n"
+    "                slots=maximum number of hotplug slots\n"
+    "                maxmem=maximum total amount of memory\n",
+    QEMU_ARCH_ALL)
 STEXI
 @item -m @var{megs}
 @findex -m
