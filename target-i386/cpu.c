@@ -280,85 +280,6 @@ void host_cpuid(uint32_t function, uint32_t count,
 #endif
 }
 
-#define iswhite(c) ((c) && ((c) <= ' ' || '~' < (c)))
-
-/* general substring compare of *[s1..e1) and *[s2..e2).  sx is start of
- * a substring.  ex if !NULL points to the first char after a substring,
- * otherwise the string is assumed to sized by a terminating nul.
- * Return lexical ordering of *s1:*s2.
- */
-static int sstrcmp(const char *s1, const char *e1, const char *s2,
-    const char *e2)
-{
-    for (;;) {
-        if (!*s1 || !*s2 || *s1 != *s2)
-            return (*s1 - *s2);
-        ++s1, ++s2;
-        if (s1 == e1 && s2 == e2)
-            return (0);
-        else if (s1 == e1)
-            return (*s2);
-        else if (s2 == e2)
-            return (*s1);
-    }
-}
-
-/* compare *[s..e) to *altstr.  *altstr may be a simple string or multiple
- * '|' delimited (possibly empty) strings in which case search for a match
- * within the alternatives proceeds left to right.  Return 0 for success,
- * non-zero otherwise.
- */
-static int altcmp(const char *s, const char *e, const char *altstr)
-{
-    const char *p, *q;
-
-    for (q = p = altstr; ; ) {
-        while (*p && *p != '|')
-            ++p;
-        if ((q == p && !*s) || (q != p && !sstrcmp(s, e, q, p)))
-            return (0);
-        if (!*p)
-            return (1);
-        else
-            q = ++p;
-    }
-}
-
-/* search featureset for flag *[s..e), if found set corresponding bit in
- * *pval and return true, otherwise return false
- */
-static bool lookup_feature(uint32_t *pval, const char *s, const char *e,
-                           const char **featureset)
-{
-    uint32_t mask;
-    const char **ppc;
-    bool found = false;
-
-    for (mask = 1, ppc = featureset; mask; mask <<= 1, ++ppc) {
-        if (*ppc && !altcmp(s, e, *ppc)) {
-            *pval |= mask;
-            found = true;
-        }
-    }
-    return found;
-}
-
-static void add_flagname_to_bitmaps(const char *flagname,
-                                    FeatureWordArray words)
-{
-    FeatureWord w;
-    for (w = 0; w < FEATURE_WORDS; w++) {
-        FeatureWordInfo *wi = &feature_word_info[w];
-        if (wi->feat_names &&
-            lookup_feature(&words[w], flagname, NULL, wi->feat_names)) {
-            break;
-        }
-    }
-    if (w == FEATURE_WORDS) {
-        fprintf(stderr, "CPU feature %s not found\n", flagname);
-    }
-}
-
 typedef struct x86_def_t {
     const char *name;
     uint32_t level;
@@ -1526,6 +1447,9 @@ static PropertyInfo qdev_prop_spinlocks = {
     .set   = x86_set_hv_spinlocks,
 };
 
+#define X86CPU_FEAT(_name, _bit, _leaf) \
+    DEFINE_PROP_BIT(_name, X86CPU, env.features[_leaf], _bit, 0)
+
 static Property cpu_x86_properties[] = {
     { .name  = "hv-spinlocks", .info  = &qdev_prop_spinlocks },
     DEFINE_PROP_BOOL("hv-relaxed", X86CPU, hyperv_relaxed_timing, false),
@@ -1540,6 +1464,153 @@ static Property cpu_x86_properties[] = {
     { .name = "vendor", .info  = &qdev_prop_vendor },
     { .name  = "model-id", .info  = &qdev_prop_model_id },
     { .name  = "tsc-frequency", .info  = &qdev_prop_tsc_freq },
+    X86CPU_FEAT("feat-fpu",     0, FEAT_1_EDX),
+    X86CPU_FEAT("feat-vme",     1, FEAT_1_EDX),
+    X86CPU_FEAT("feat-de",      2, FEAT_1_EDX),
+    X86CPU_FEAT("feat-pse",     3, FEAT_1_EDX),
+    X86CPU_FEAT("feat-tsc",     4, FEAT_1_EDX),
+    X86CPU_FEAT("feat-msr",     5, FEAT_1_EDX),
+    X86CPU_FEAT("feat-pae",     6, FEAT_1_EDX),
+    X86CPU_FEAT("feat-mce",     7, FEAT_1_EDX),
+    X86CPU_FEAT("feat-cx8",     8, FEAT_1_EDX),
+    X86CPU_FEAT("feat-apic",    9, FEAT_1_EDX),
+    X86CPU_FEAT("feat-sep",     11, FEAT_1_EDX),
+    X86CPU_FEAT("feat-mtrr",    12, FEAT_1_EDX),
+    X86CPU_FEAT("feat-pge",     13, FEAT_1_EDX),
+    X86CPU_FEAT("feat-mca",     14, FEAT_1_EDX),
+    X86CPU_FEAT("feat-cmov",    15, FEAT_1_EDX),
+    X86CPU_FEAT("feat-pat",     16, FEAT_1_EDX),
+    X86CPU_FEAT("feat-pse36",   17, FEAT_1_EDX),
+    /* Intel psn */
+    X86CPU_FEAT("feat-pn",      18, FEAT_1_EDX),
+    /* Intel clfsh */
+    X86CPU_FEAT("feat-clflush", 19, FEAT_1_EDX),
+    /* Intel dts */
+    X86CPU_FEAT("feat-ds",      21, FEAT_1_EDX),
+    X86CPU_FEAT("feat-acpi",    22, FEAT_1_EDX),
+    X86CPU_FEAT("feat-mmx",     23, FEAT_1_EDX),
+    X86CPU_FEAT("feat-fxsr",    24, FEAT_1_EDX),
+    X86CPU_FEAT("feat-sse",     25, FEAT_1_EDX),
+    X86CPU_FEAT("feat-sse2",    26, FEAT_1_EDX),
+    X86CPU_FEAT("feat-ss",      27, FEAT_1_EDX),
+    /* Intel htt */
+    X86CPU_FEAT("feat-ht",      28, FEAT_1_EDX),
+    X86CPU_FEAT("feat-tm",      29, FEAT_1_EDX),
+    X86CPU_FEAT("feat-ia64",    30, FEAT_1_EDX),
+    X86CPU_FEAT("feat-pbe",     31, FEAT_1_EDX),
+    /* Intel */
+    X86CPU_FEAT("feat-pni",          0, FEAT_1_ECX),
+    /* AMD sse3 */
+    X86CPU_FEAT("feat-sse3",         0, FEAT_1_ECX),
+    X86CPU_FEAT("feat-pclmulqdq",    1, FEAT_1_ECX),
+    X86CPU_FEAT("feat-pclmuldq",     1, FEAT_1_ECX),
+    X86CPU_FEAT("feat-dtes64",       2, FEAT_1_ECX),
+    X86CPU_FEAT("feat-monitor",      3, FEAT_1_ECX),
+    X86CPU_FEAT("feat-ds-cpl",       4, FEAT_1_ECX),
+    X86CPU_FEAT("feat-vmx",          5, FEAT_1_ECX),
+    X86CPU_FEAT("feat-smx",          6, FEAT_1_ECX),
+    X86CPU_FEAT("feat-est",          7, FEAT_1_ECX),
+    X86CPU_FEAT("feat-tm2",          8, FEAT_1_ECX),
+    X86CPU_FEAT("feat-ssse3",        9, FEAT_1_ECX),
+    X86CPU_FEAT("feat-cid",          10, FEAT_1_ECX),
+    X86CPU_FEAT("feat-fma",          12, FEAT_1_ECX),
+    X86CPU_FEAT("feat-cx16",         13, FEAT_1_ECX),
+    X86CPU_FEAT("feat-xtpr",         14, FEAT_1_ECX),
+    X86CPU_FEAT("feat-pdcm",         15, FEAT_1_ECX),
+    X86CPU_FEAT("feat-pcid",         17, FEAT_1_ECX),
+    X86CPU_FEAT("feat-dca",          18, FEAT_1_ECX),
+    X86CPU_FEAT("feat-sse4-1",       19, FEAT_1_ECX),
+    X86CPU_FEAT("feat-sse4.1",       19, FEAT_1_ECX),
+    X86CPU_FEAT("feat-sse4-2",       20, FEAT_1_ECX),
+    X86CPU_FEAT("feat-sse4.2",       20, FEAT_1_ECX),
+    X86CPU_FEAT("feat-x2apic",       21, FEAT_1_ECX),
+    X86CPU_FEAT("feat-movbe",        22, FEAT_1_ECX),
+    X86CPU_FEAT("feat-popcnt",       23, FEAT_1_ECX),
+    X86CPU_FEAT("feat-tsc-deadline", 24, FEAT_1_ECX),
+    X86CPU_FEAT("feat-aes",          25, FEAT_1_ECX),
+    X86CPU_FEAT("feat-xsave",        26, FEAT_1_ECX),
+    X86CPU_FEAT("feat-osxsave",      27, FEAT_1_ECX),
+    X86CPU_FEAT("feat-avx",          28, FEAT_1_ECX),
+    X86CPU_FEAT("feat-f16c",         29, FEAT_1_ECX),
+    X86CPU_FEAT("feat-rdrand",       30, FEAT_1_ECX),
+    X86CPU_FEAT("feat-hypervisor",   31, FEAT_1_ECX),
+    X86CPU_FEAT("feat-syscall",  11, FEAT_8000_0001_EDX),
+    X86CPU_FEAT("feat-nx",       20, FEAT_8000_0001_EDX),
+    X86CPU_FEAT("feat-xd",       20, FEAT_8000_0001_EDX),
+    X86CPU_FEAT("feat-mmxext",   22, FEAT_8000_0001_EDX),
+    X86CPU_FEAT("feat-fxsr-opt", 25, FEAT_8000_0001_EDX),
+    X86CPU_FEAT("feat-ffxsr",    25, FEAT_8000_0001_EDX),
+    /* AMD Page1GB */
+    X86CPU_FEAT("feat-pdpe1gb",  26, FEAT_8000_0001_EDX),
+    X86CPU_FEAT("feat-rdtscp",   27, FEAT_8000_0001_EDX),
+    X86CPU_FEAT("feat-lm",       29, FEAT_8000_0001_EDX),
+    X86CPU_FEAT("feat-i64",      29, FEAT_8000_0001_EDX),
+    X86CPU_FEAT("feat-3dnowext", 30, FEAT_8000_0001_EDX),
+    X86CPU_FEAT("feat-3dnow",    31, FEAT_8000_0001_EDX),
+    /* AMD LahfSahf */
+    X86CPU_FEAT("feat-lahf-lm",       0, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-cmp-legacy",    1, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-svm",           2, FEAT_8000_0001_ECX),
+    /* AMD ExtApicSpace */
+    X86CPU_FEAT("feat-extapic",       3, FEAT_8000_0001_ECX),
+    /* AMD AltMovCr8 */
+    X86CPU_FEAT("feat-cr8legacy",     4, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-abm",           5, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-sse4a",         6, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-misalignsse",   7, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-3dnowprefetch", 8, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-osvw",          9, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-ibs",           10, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-xop",           11, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-skinit",        12, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-wdt",           13, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-lwp",           15, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-fma4",          16, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-tce",           17, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-nodeid-msr",    19, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-tbm",           21, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-topoext",       22, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-perfctr-core",  23, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-perfctr-nb",    24, FEAT_8000_0001_ECX),
+    X86CPU_FEAT("feat-xstore",    2, FEAT_C000_0001_EDX),
+    X86CPU_FEAT("feat-xstore-en", 3, FEAT_C000_0001_EDX),
+    X86CPU_FEAT("feat-xcrypt",    6, FEAT_C000_0001_EDX),
+    X86CPU_FEAT("feat-xcrypt-en", 7, FEAT_C000_0001_EDX),
+    X86CPU_FEAT("feat-ace2",      8, FEAT_C000_0001_EDX),
+    X86CPU_FEAT("feat-ace2-en",   9, FEAT_C000_0001_EDX),
+    X86CPU_FEAT("feat-phe",      10, FEAT_C000_0001_EDX),
+    X86CPU_FEAT("feat-phe-en",   11, FEAT_C000_0001_EDX),
+    X86CPU_FEAT("feat-pmm",      12, FEAT_C000_0001_EDX),
+    X86CPU_FEAT("feat-pmm-en",   13, FEAT_C000_0001_EDX),
+    X86CPU_FEAT("feat-kvmclock",        0, FEAT_KVM),
+    X86CPU_FEAT("feat-kvm-nopiodelay",  1, FEAT_KVM),
+    X86CPU_FEAT("feat-kvm-mmu",         2, FEAT_KVM),
+    X86CPU_FEAT("feat-kvmclock2",       3, FEAT_KVM),
+    X86CPU_FEAT("feat-kvm-asyncpf",     4, FEAT_KVM),
+    X86CPU_FEAT("feat-kvm-steal-tm",    5, FEAT_KVM),
+    X86CPU_FEAT("feat-kvm-pv-eoi",      6, FEAT_KVM),
+    X86CPU_FEAT("feat-npt",           0, FEAT_SVM),
+    X86CPU_FEAT("feat-lbrv",          1, FEAT_SVM),
+    X86CPU_FEAT("feat-svm-lock",      2, FEAT_SVM),
+    X86CPU_FEAT("feat-nrip-save",     3, FEAT_SVM),
+    X86CPU_FEAT("feat-tsc-scale",     4, FEAT_SVM),
+    X86CPU_FEAT("feat-vmcb-clean",    5, FEAT_SVM),
+    X86CPU_FEAT("feat-flushbyasid",   6, FEAT_SVM),
+    X86CPU_FEAT("feat-decodeassists", 7, FEAT_SVM),
+    X86CPU_FEAT("feat-pause-filter",  10, FEAT_SVM),
+    X86CPU_FEAT("feat-pfthreshold",   12, FEAT_SVM),
+    X86CPU_FEAT("feat-fsgsbase",  0, FEAT_7_0_EBX),
+    X86CPU_FEAT("feat-bmi1",    3, FEAT_7_0_EBX),
+    X86CPU_FEAT("feat-hle",     4, FEAT_7_0_EBX),
+    X86CPU_FEAT("feat-avx2",    5, FEAT_7_0_EBX),
+    X86CPU_FEAT("feat-smep",    7, FEAT_7_0_EBX),
+    X86CPU_FEAT("feat-bmi2",    8, FEAT_7_0_EBX),
+    X86CPU_FEAT("feat-erms",    9, FEAT_7_0_EBX),
+    X86CPU_FEAT("feat-invpcid", 10, FEAT_7_0_EBX),
+    X86CPU_FEAT("feat-rtm",     11, FEAT_7_0_EBX),
+    X86CPU_FEAT("feat-rdseed",  18, FEAT_7_0_EBX),
+    X86CPU_FEAT("feat-adx",     19, FEAT_7_0_EBX),
+    X86CPU_FEAT("feat-smap",    20, FEAT_7_0_EBX),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -1594,24 +1665,48 @@ static inline void feat2prop(char *s)
 static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
 {
     char *featurestr; /* Single 'key=value" string being parsed */
-    /* Features to be added */
-    FeatureWordArray plus_features = { 0 };
-    /* Features to be removed */
-    FeatureWordArray minus_features = { 0 };
     uint32_t numvalue;
-    CPUX86State *env = &cpu->env;
+    QDict *props = qdict_new();
+    const QDictEntry *ent;
 
     featurestr = features ? strtok(features, ",") : NULL;
 
     while (featurestr) {
         char *val;
-        if (featurestr[0] == '+') {
-            add_flagname_to_bitmaps(featurestr + 1, plus_features);
-        } else if (featurestr[0] == '-') {
-            add_flagname_to_bitmaps(featurestr + 1, minus_features);
+        feat2prop(featurestr);
+        if (featurestr[0] == '+' || featurestr[0] == '-') {
+            const gchar *feat = featurestr + 1;
+            gchar *cpuid_fname = NULL;
+            bool set_kvmclock2 = false;
+
+            if (strncmp(feat, "feat-", 5)) {
+                cpuid_fname = g_strconcat("feat-", feat, NULL);
+                feat = cpuid_fname;
+            }
+
+            if (!strcmp(feat, "feat-kvmclock")) {
+                set_kvmclock2 = true;
+            }
+
+        rep_feat_set:
+            if (featurestr[0] == '+') {
+                /* preseve legacy behaviour, if feature was disabled once
+                 * do not allow to enable it again */
+                if (!qdict_haskey(props, feat)) {
+                    qdict_put(props, feat, qstring_from_str("on"));
+                }
+            } else {
+                qdict_put(props, feat, qstring_from_str("off"));
+            }
+
+            if (set_kvmclock2) {
+                feat = "feat-kvmclock2";
+                set_kvmclock2 = false;
+                goto rep_feat_set;
+            }
+            g_free(cpuid_fname);
         } else if ((val = strchr(featurestr, '='))) {
             *val = 0; val++;
-            feat2prop(featurestr);
             if (!strcmp(featurestr, "xlevel")) {
                 char *err;
                 char num[32];
@@ -1662,7 +1757,6 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
                 object_property_parse(OBJECT(cpu), val, featurestr, errp);
             }
         } else {
-            feat2prop(featurestr);
             object_property_parse(OBJECT(cpu), "on", featurestr, errp);
         }
         if (error_is_set(errp)) {
@@ -1670,24 +1764,20 @@ static void cpu_x86_parse_featurestr(X86CPU *cpu, char *features, Error **errp)
         }
         featurestr = strtok(NULL, ",");
     }
-    env->features[FEAT_1_EDX] |= plus_features[FEAT_1_EDX];
-    env->features[FEAT_1_ECX] |= plus_features[FEAT_1_ECX];
-    env->features[FEAT_8000_0001_EDX] |= plus_features[FEAT_8000_0001_EDX];
-    env->features[FEAT_8000_0001_ECX] |= plus_features[FEAT_8000_0001_ECX];
-    env->features[FEAT_C000_0001_EDX] |= plus_features[FEAT_C000_0001_EDX];
-    env->features[FEAT_KVM] |= plus_features[FEAT_KVM];
-    env->features[FEAT_SVM] |= plus_features[FEAT_SVM];
-    env->features[FEAT_7_0_EBX] |= plus_features[FEAT_7_0_EBX];
-    env->features[FEAT_1_EDX] &= ~minus_features[FEAT_1_EDX];
-    env->features[FEAT_1_ECX] &= ~minus_features[FEAT_1_ECX];
-    env->features[FEAT_8000_0001_EDX] &= ~minus_features[FEAT_8000_0001_EDX];
-    env->features[FEAT_8000_0001_ECX] &= ~minus_features[FEAT_8000_0001_ECX];
-    env->features[FEAT_C000_0001_EDX] &= ~minus_features[FEAT_C000_0001_EDX];
-    env->features[FEAT_KVM] &= ~minus_features[FEAT_KVM];
-    env->features[FEAT_SVM] &= ~minus_features[FEAT_SVM];
-    env->features[FEAT_7_0_EBX] &= ~minus_features[FEAT_7_0_EBX];
+
+    for (ent = qdict_first(props); ent; ent = qdict_next(props, ent)) {
+        const QString *qval = qobject_to_qstring(qdict_entry_value(ent));
+        /* TODO: switch to using global properties after subclasses are done */
+        object_property_parse(OBJECT(cpu), qstring_get_str(qval),
+                              qdict_entry_key(ent), errp);
+        if (error_is_set(errp)) {
+            QDECREF(props);
+            return;
+        }
+    }
 
 out:
+    QDECREF(props);
     return;
 }
 
