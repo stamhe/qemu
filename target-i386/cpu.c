@@ -60,98 +60,7 @@ static void x86_cpu_vendor_words2str(char *dst, uint32_t vendor1,
     dst[CPUID_VENDOR_SZ] = '\0';
 }
 
-/* feature flags taken from "Intel Processor Identification and the CPUID
- * Instruction" and AMD's "CPUID Specification".  In cases of disagreement
- * between feature naming conventions, aliases may be added.
- */
-static const char *feature_name[] = {
-    "fpu", "vme", "de", "pse",
-    "tsc", "msr", "pae", "mce",
-    "cx8", "apic", NULL, "sep",
-    "mtrr", "pge", "mca", "cmov",
-    "pat", "pse36", "pn" /* Intel psn */, "clflush" /* Intel clfsh */,
-    NULL, "ds" /* Intel dts */, "acpi", "mmx",
-    "fxsr", "sse", "sse2", "ss",
-    "ht" /* Intel htt */, "tm", "ia64", "pbe",
-};
-static const char *ext_feature_name[] = {
-    "pni|sse3" /* Intel,AMD sse3 */, "pclmulqdq|pclmuldq", "dtes64", "monitor",
-    "ds_cpl", "vmx", "smx", "est",
-    "tm2", "ssse3", "cid", NULL,
-    "fma", "cx16", "xtpr", "pdcm",
-    NULL, "pcid", "dca", "sse4.1|sse4_1",
-    "sse4.2|sse4_2", "x2apic", "movbe", "popcnt",
-    "tsc-deadline", "aes", "xsave", "osxsave",
-    "avx", "f16c", "rdrand", "hypervisor",
-};
-/* Feature names that are already defined on feature_name[] but are set on
- * CPUID[8000_0001].EDX on AMD CPUs don't have their names on
- * ext2_feature_name[]. They are copied automatically to cpuid_ext2_features
- * if and only if CPU vendor is AMD.
- */
-static const char *ext2_feature_name[] = {
-    NULL /* fpu */, NULL /* vme */, NULL /* de */, NULL /* pse */,
-    NULL /* tsc */, NULL /* msr */, NULL /* pae */, NULL /* mce */,
-    NULL /* cx8 */ /* AMD CMPXCHG8B */, NULL /* apic */, NULL, "syscall",
-    NULL /* mtrr */, NULL /* pge */, NULL /* mca */, NULL /* cmov */,
-    NULL /* pat */, NULL /* pse36 */, NULL, NULL /* Linux mp */,
-    "nx|xd", NULL, "mmxext", NULL /* mmx */,
-    NULL /* fxsr */, "fxsr_opt|ffxsr", "pdpe1gb" /* AMD Page1GB */, "rdtscp",
-    NULL, "lm|i64", "3dnowext", "3dnow",
-};
-static const char *ext3_feature_name[] = {
-    "lahf_lm" /* AMD LahfSahf */, "cmp_legacy", "svm", "extapic" /* AMD ExtApicSpace */,
-    "cr8legacy" /* AMD AltMovCr8 */, "abm", "sse4a", "misalignsse",
-    "3dnowprefetch", "osvw", "ibs", "xop",
-    "skinit", "wdt", NULL, "lwp",
-    "fma4", "tce", NULL, "nodeid_msr",
-    NULL, "tbm", "topoext", "perfctr_core",
-    "perfctr_nb", NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-};
-
-static const char *ext4_feature_name[] = {
-    NULL, NULL, "xstore", "xstore-en",
-    NULL, NULL, "xcrypt", "xcrypt-en",
-    "ace2", "ace2-en", "phe", "phe-en",
-    "pmm", "pmm-en", NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-};
-
-static const char *kvm_feature_name[] = {
-    "kvmclock", "kvm_nopiodelay", "kvm_mmu", "kvmclock",
-    "kvm_asyncpf", "kvm_steal_time", "kvm_pv_eoi", NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-};
-
-static const char *svm_feature_name[] = {
-    "npt", "lbrv", "svm_lock", "nrip_save",
-    "tsc_scale", "vmcb_clean",  "flushbyasid", "decodeassists",
-    NULL, NULL, "pause_filter", NULL,
-    "pfthreshold", NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-};
-
-static const char *cpuid_7_0_ebx_feature_name[] = {
-    "fsgsbase", NULL, NULL, "bmi1", "hle", "avx2", NULL, "smep",
-    "bmi2", "erms", "invpcid", "rtm", NULL, NULL, NULL, NULL,
-    NULL, NULL, "rdseed", "adx", "smap", NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-};
-
 typedef struct FeatureWordInfo {
-    const char **feat_names;
     uint32_t cpuid_eax;   /* Input EAX for CPUID */
     bool cpuid_needs_ecx; /* CPUID instruction uses ECX as input */
     uint32_t cpuid_ecx;   /* Input ECX value for CPUID */
@@ -160,35 +69,27 @@ typedef struct FeatureWordInfo {
 
 static FeatureWordInfo feature_word_info[FEATURE_WORDS] = {
     [FEAT_1_EDX] = {
-        .feat_names = feature_name,
         .cpuid_eax = 1, .cpuid_reg = R_EDX,
     },
     [FEAT_1_ECX] = {
-        .feat_names = ext_feature_name,
         .cpuid_eax = 1, .cpuid_reg = R_ECX,
     },
     [FEAT_8000_0001_EDX] = {
-        .feat_names = ext2_feature_name,
         .cpuid_eax = 0x80000001, .cpuid_reg = R_EDX,
     },
     [FEAT_8000_0001_ECX] = {
-        .feat_names = ext3_feature_name,
         .cpuid_eax = 0x80000001, .cpuid_reg = R_ECX,
     },
     [FEAT_C000_0001_EDX] = {
-        .feat_names = ext4_feature_name,
         .cpuid_eax = 0xC0000001, .cpuid_reg = R_EDX,
     },
     [FEAT_KVM] = {
-        .feat_names = kvm_feature_name,
         .cpuid_eax = KVM_CPUID_FEATURES, .cpuid_reg = R_EAX,
     },
     [FEAT_SVM] = {
-        .feat_names = svm_feature_name,
         .cpuid_eax = 0x8000000A, .cpuid_reg = R_EDX,
     },
     [FEAT_7_0_EBX] = {
-        .feat_names = cpuid_7_0_ebx_feature_name,
         .cpuid_eax = 7,
         .cpuid_needs_ecx = true, .cpuid_ecx = 0,
         .cpuid_reg = R_EBX,
