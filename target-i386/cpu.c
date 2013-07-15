@@ -1776,42 +1776,13 @@ out:
     return;
 }
 
-/* generate a composite string into buf of all cpuid names in featureset
- * selected by fbits.  indicate truncation at bufsize in the event of overflow.
- * if flags, suppress names undefined in featureset.
- */
-static void listflags(char *buf, int bufsize, uint32_t fbits,
-    const char **featureset, uint32_t flags)
-{
-    const char **p = &featureset[31];
-    char *q, *b, bit;
-    int nc;
-
-    b = 4 <= bufsize ? buf + (bufsize -= 3) - 1 : NULL;
-    *buf = '\0';
-    for (q = buf, bit = 31; fbits && bufsize; --p, fbits &= ~(1 << bit), --bit)
-        if (fbits & 1 << bit && (*p || !flags)) {
-            if (*p)
-                nc = snprintf(q, bufsize, "%s%s", q == buf ? "" : " ", *p);
-            else
-                nc = snprintf(q, bufsize, "%s[%d]", q == buf ? "" : " ", bit);
-            if (bufsize <= nc) {
-                if (b) {
-                    memcpy(b, "...", sizeof("..."));
-                }
-                return;
-            }
-            q += nc;
-            bufsize -= nc;
-        }
-}
-
 /* generate CPU information. */
 void x86_cpu_list(FILE *f, fprintf_function cpu_fprintf)
 {
     x86_def_t *def;
     char buf[256];
     int i;
+    const Property *prop;
 
     for (i = 0; i < ARRAY_SIZE(builtin_x86_defs); i++) {
         def = &builtin_x86_defs[i];
@@ -1825,12 +1796,17 @@ void x86_cpu_list(FILE *f, fprintf_function cpu_fprintf)
 #endif
 
     (*cpu_fprintf)(f, "\nRecognized CPUID flags:\n");
-    for (i = 0; i < ARRAY_SIZE(feature_word_info); i++) {
-        FeatureWordInfo *fw = &feature_word_info[i];
 
-        listflags(buf, sizeof(buf), (uint32_t)~0, fw->feat_names, 1);
-        (*cpu_fprintf)(f, "  %s\n", buf);
+    (*cpu_fprintf)(f, " ");
+    QDEV_PROP_FOREACH(prop, object_class_by_name(TYPE_X86_CPU)) {
+        const char *name = prop ? prop->name : "";
+
+        if (!g_str_has_prefix(name, "feat-")) {
+            continue;
+        }
+        (*cpu_fprintf)(f, " %s", name);
     }
+    (*cpu_fprintf)(f, "\n");
 }
 
 CpuDefinitionInfoList *arch_query_cpu_definitions(Error **errp)
