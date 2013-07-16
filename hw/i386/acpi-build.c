@@ -35,6 +35,7 @@
 #include "hw/nvram/fw_cfg.h"
 #include "hw/i386/bios-linker-loader.h"
 #include "hw/loader.h"
+#include "qemu/config-file.h"
 
 #define ACPI_BUILD_APPNAME  "Bochs"
 #define ACPI_BUILD_APPNAME6 "BOCHS "
@@ -267,6 +268,18 @@ acpi_encode_len(uint8_t *ssdt_ptr, int length, int bytes)
 #define ACPI_PCIHP_SIZEOF (*ssdt_pcihp_end - *ssdt_pcihp_start)
 #define ACPI_PCIHP_AML (ssdp_pcihp_aml + *ssdt_pcihp_start)
 
+#include "hw/i386/ssdt-mem.hex"
+
+/* 0x5B 0x82 DeviceOp PkgLength NameString DimmID */
+#define ACPI_MEM_AML (ssdm_mem_aml + *ssdt_mem_start)
+#define ACPI_MEM_SIZEOF (*ssdt_mem_end - *ssdt_mem_start)
+#define ACPI_MEM_OFFSET_HEX (*ssdt_mem_name - *ssdt_mem_start + 2)
+#define ACPI_MEM_OFFSET_ID (*ssdt_mem_id - *ssdt_mem_start + 7)
+#define ACPI_MEM_DEV_COUNT_OBJ (ssdm_mem_aml + *ssdt_mem_count_name - 1/* name prefix */)
+#define ACPI_MEM_DEV_COUNT_OFFSET (*ssdt_mem_count - *ssdt_mem_count_name + 1/* name prefix */)
+#define ACPI_MEM_DEV_COUNT_SIZE (*ssdt_mem_start - *ssdt_mem_count_name + 1/* name prefix */)
+
+
 #define ACPI_SSDT_SIGNATURE 0x54445353 /* SSDT */
 #define ACPI_SSDT_HEADER_LENGTH 36
 
@@ -326,11 +339,16 @@ build_ssdt(GArray *table_data, GArray *linker,
            FWCfgState *fw_cfg, PcGuestInfo *guest_info)
 {
     int acpi_cpus = MIN(0xff, guest_info->apic_id_limit);
+    QemuOpts *opts = qemu_opts_find(qemu_find_opts("memory-opts"), NULL);
+    uint32_t acpi_mem_devs = opts ? qemu_opt_get_number(opts, "slots", 0) : 0;
     int length = (sizeof(ssdp_misc_aml)                     /* _S3_ / _S4_ / _S5_ */
                   + (1+3+4)                                 /* Scope(_SB_) */
                   + (acpi_cpus * ACPI_PROC_SIZEOF)               /* procs */
                   + (1+2+5+(12*acpi_cpus))                  /* NTFY */
                   + (6+2+1+(1*acpi_cpus))                   /* CPON */
+                  + (1+2+5+(12*acpi_mem_devs))              /* MTFY */
+                  + ACPI_MEM_DEV_COUNT_SIZE                 /* MDNR const */
+                  + (acpi_mem_devs * ACPI_MEM_SIZEOF)       /* mem devices */
                   + (1+3+4)                                 /* Scope(PCI0) */
                   + ((PCI_SLOT_MAX - 1) * ACPI_PCIHP_SIZEOF)        /* slots */
                   + (1+2+5+(12*(PCI_SLOT_MAX - 1))));          /* PCNT */
@@ -406,6 +424,22 @@ build_ssdt(GArray *table_data, GArray *linker,
     *(ssdt_ptr++) = acpi_cpus;
     for (i=0; i<acpi_cpus; i++)
         *(ssdt_ptr++) = (test_bit(i, guest_info->found_cpus)) ? 0x01 : 0x00;
+
+    /* set number of mem devices. i.e. declare Name(MDNR, nb_memdevs) */
+    memcpy(ssdt_ptr, ACPI_MEM_DEV_COUNT_OBJ, ACPI_MEM_DEV_COUNT_SIZE);
+    memcpy(ssdt_ptr + ACPI_MEM_DEV_COUNT_OFFSET, &acpi_mem_devs, 4);
+    ssdt_ptr += ACPI_MEM_DEV_COUNT_SIZE;
+
+    // build mem devices and notifiers for them
+    for (i = 0; i < acpi_mem_devs; i++) {
+        char id[5];
+        snprintf(id, sizeof(id), "%02x", i);
+        memcpy(ssdt_ptr, ACPI_MEM_AML, ACPI_MEM_SIZEOF);
+        memcpy(ssdt_ptr + ACPI_MEM_OFFSET_HEX, id, 2);
+        memcpy(ssdt_ptr + ACPI_MEM_OFFSET_ID, id, 2);
+        ssdt_ptr += ACPI_MEM_SIZEOF;
+    }
+    ssdt_ptr = build_notify(ssdt_ptr, "MTFY", 0, acpi_mem_devs, "MP00", 2);
 
     /* build Scope(PCI0) opcode */
     *(ssdt_ptr++) = 0x10; /* ScopeOp */
