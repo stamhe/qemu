@@ -71,7 +71,6 @@ static void dimm_class_init(ObjectClass *klass, void *data)
 
     dc->realize = dimm_realize;
     dc->props = dimm_properties;
-    dc->bus_type = TYPE_DIMM_BUS;
 }
 
 static TypeInfo dimm_info = {

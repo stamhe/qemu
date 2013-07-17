@@ -33,6 +33,7 @@
 #include "hw/pci-host/pam.h"
 #include "sysemu/sysemu.h"
 #include "hw/mem-hotplug/dimm.h"
+#include "qemu/config-file.h"
 
 /*
  * I440FX chipset data sheet.
@@ -97,9 +98,10 @@ struct PCII440FXState {
     PAMMemoryRegion pam_regions[13];
     MemoryRegion smram_region;
     uint8_t smm_enabled;
-    BusState dimm_bus;
     Notifier mem_added_notifier;
     hwaddr dimm_mem_start;
+    DimmDevice **dimms;
+    int dimms_nr;
 };
 
 
@@ -218,33 +220,35 @@ static int i440fx_pcihost_initfn(SysBusDevice *dev)
     return 0;
 }
 
-
-static int i440fx_get_hotplugable_mem_size(DeviceState *dev, void *opaque)
-{
-    DimmDevice *dimm = DIMM(dev);
-    uint64_t *total_size = (uint64_t*)opaque;
-
-    *total_size += dimm->size;
-
-    return 0;
-}
-
 static void i440fx_mem_added_req(Notifier *n, void *opaque)
 {
     PCII440FXState *d = container_of(n, PCII440FXState, mem_added_notifier);
     DimmDevice *dimm = DIMM(opaque);
+    gchar * name;
+    int i;
+    bool alloc_base = dimm->start ? false : true;
 
-    if (dimm->start == 0) {
-        if (sizeof(hwaddr) == 4) {
-            /* TODO: 32 bit part */
-        } else {
-            uint64_t offset = 0;
-            qbus_walk_children(&d->dimm_bus, i440fx_get_hotplugable_mem_size,
-                               NULL, &offset);
-            dimm->start = d->dimm_mem_start + offset - dimm->size;
+    dimm->start = dimm->start ? dimm->start : d->dimm_mem_start;
+
+    for (i = 0; i < d->dimms_nr; ++i) {
+        if (!d->dimms[i]) { /* find a free slot for dimm */
+            if (dimm->slot_nr < 0) {
+                dimm->slot_nr = i;
+            }
+        }
+        if (alloc_base && d->dimms[i]) { /* find free window */
+            hwaddr  win = d->dimms[i]->start - dimm->start;
+
+            dimm->start  =  win < dimm->size ?
+                d->dimms[i]->start + d->dimms[i]->size : dimm->start;
         }
     }
 
+    // TODO: how to nicely abort in hotplug case with slot_nr collision ?
+
+    name = g_strdup_printf("dimm.%d", dimm->slot_nr);
+    object_property_set_link(OBJECT(d), OBJECT(dimm), name, NULL);
+    g_free(name);
     vmstate_register_ram_global(dimm->mr);
     memory_region_add_subregion(d->system_memory, dimm->start, dimm->mr);
 }
@@ -252,12 +256,25 @@ static void i440fx_mem_added_req(Notifier *n, void *opaque)
 static int i440fx_initfn(PCIDevice *dev)
 {
     PCII440FXState *d = I440FX_PCI_DEVICE(dev);
+    QemuOpts *opts = qemu_opts_find(qemu_find_opts("memory-opts"), NULL);
 
     d->dev.config[I440FX_SMRAM] = 0x02;
 
     cpu_smm_register(&i440fx_set_smm, d);
 
-    qbus_create_inplace(&d->dimm_bus, TYPE_DIMM_BUS, DEVICE(d), "membus");
+    if (opts && qemu_opt_get_number(opts, "slots", 0)) {
+        int i;
+        d->dimms_nr = qemu_opt_get_number(opts, "slots", 0);
+        d->dimms = g_malloc0(sizeof(DimmDevice *) * d->dimms_nr);
+
+	for (i = 0; i < d->dimms_nr; ++i) {
+            gchar * name = g_strdup_printf("dimm.%d", i);
+
+            object_property_add_link(OBJECT(d), name, TYPE_DIMM,
+                (Object **) &d->dimms[i], NULL);
+            g_free(name);
+	}
+    }
 
     d->mem_added_notifier.notify = i440fx_mem_added_req;
     qemu_register_mem_added_notifier(&d->mem_added_notifier);
