@@ -70,8 +70,7 @@ typedef struct CPUStatus {
 } CPUStatus;
 
 typedef struct MemStatus {
-    hwaddr  m_start;
-    hwaddr  m_len;
+    DimmDevice *dimm;
     bool is_enabled;
     bool is_inserting;
     bool is_removing;
@@ -747,19 +746,19 @@ static uint64_t piix4_hp_mem_read(void *opaque, hwaddr addr, unsigned int size)
     mdev = &mem_st->devs[mem_st->selector];
     switch (addr) {
         case 0x0: {
-            val = mdev->m_start;
+            val = mdev->dimm->start;
             break;
         }
         case 0x4: {
-            val = mdev->m_start >> 32;
+            val = mdev->dimm->start >> 32;
             break;
         }
         case 0x8: {
-            val = mdev->m_len;
+            val = mdev->dimm->size;
             break;
         }
         case 0xc: {
-            val = mdev->m_len >> 32;
+            val = mdev->dimm->size >> 32;
             break;
         }
         case 0x14: {
@@ -849,18 +848,20 @@ static void piix4_init_mem_status(PIIX4PMState *s)
 static void piix4_mem_added_req(Notifier *n, void *opaque)
 {
     PIIX4PMState *s = container_of(n, PIIX4PMState, mem_added_notifier);
-    DimmDevice *dimm = DIMM(opaque);
+    DeviceState *dev = DEVICE(opaque);
+    DimmDevice *dimm = DIMM(dev);
     mem_hotplug_state *mem_st = &s->gpe_mem;
     MemStatus *mdev;
 
-    if (dimm->idx >= mem_st->dev_count) {
+    if (dimm->slot_nr >= mem_st->dev_count) {
         return;
     }
 
-    mdev = &mem_st->devs[dimm->idx];
+    mdev = &mem_st->devs[dimm->slot_nr];
+    object_property_add_link(OBJECT(s), dev->id, TYPE_DIMM,
+                             (Object **) &mdev->dimm, NULL);
+    object_property_set_link(OBJECT(s), OBJECT(dimm), dev->id, NULL);
 
-    mdev->m_start = dimm->start;
-    mdev->m_len = dimm->size;
     mdev->is_enabled = true;
 
     /* do ACPI magic */

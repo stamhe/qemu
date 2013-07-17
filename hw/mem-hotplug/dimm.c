@@ -43,6 +43,7 @@ static const TypeInfo dimm_bus_info = {
 };
 
 static Property dimm_properties[] = {
+    DEFINE_PROP_INT32("slot", DimmDevice, slot_nr, -1),
     DEFINE_PROP_UINT64("start", DimmDevice, start, 0),
     DEFINE_PROP_SIZE("size", DimmDevice, size, DEFAULT_DIMMSIZE),
     DEFINE_PROP_UINT32("node", DimmDevice, node, 0),

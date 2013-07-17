@@ -18,7 +18,7 @@
 
 typedef struct DimmDevice {
     DeviceState qdev;
-    uint32_t idx; /* index in memory hotplug register/bitmap */
+    int32_t slot_nr; /* slot number where dimm is plugged, if negative auto allocate */
     ram_addr_t start; /* starting physical address */
     ram_addr_t size;
     uint32_t node; /* numa node proximity */
