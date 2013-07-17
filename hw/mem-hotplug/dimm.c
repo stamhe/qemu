@@ -52,7 +52,6 @@ static Property dimm_properties[] = {
 
 static void dimm_realize(DeviceState *dev, Error **errp)
 {
-    MemoryRegion *new;
     DimmDevice *dimm = DIMM(dev);
 
     if (!dev->id) {
@@ -60,11 +59,8 @@ static void dimm_realize(DeviceState *dev, Error **errp)
         return;
     }
 
-    new = g_malloc(sizeof(MemoryRegion));
-    memory_region_init_ram(new, dev->id, dimm->size);
-    vmstate_register_ram_global(new);
-    memory_region_add_subregion(get_system_memory(), dimm->start, new);
-    dimm->mr = new;
+    dimm->mr = g_malloc(sizeof(MemoryRegion));
+    memory_region_init_ram(dimm->mr, dev->id, dimm->size);
 
     notifier_list_notify(&mem_added_notifiers, dev);
 }
