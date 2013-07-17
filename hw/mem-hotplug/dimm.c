@@ -55,6 +55,11 @@ static void dimm_realize(DeviceState *dev, Error **errp)
     MemoryRegion *new;
     DimmDevice *dimm = DIMM(dev);
 
+    if (!dev->id) {
+        error_setg(errp, "missing 'id' property");
+        return;
+    }
+
     new = g_malloc(sizeof(MemoryRegion));
     memory_region_init_ram(new, dev->id, dimm->size);
     vmstate_register_ram_global(new);
