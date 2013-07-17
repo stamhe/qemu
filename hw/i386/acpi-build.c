@@ -479,14 +479,15 @@ build_hpet(GArray *table_data, GArray *linker)
 }
 
 static void
-acpi_build_srat_memory(AcpiSratMemoryAffinity *numamem,
-                       uint64_t base, uint64_t len, int node, int enabled)
+acpi_build_srat_memory(AcpiSratMemoryAffinity *numamem, uint64_t base,
+                       uint64_t len, int node, int enabled, bool hotplug)
 {
     numamem->type = ACPI_SRAT_MEMORY;
     numamem->length = sizeof(*numamem);
     memset(numamem->proximity, 0, 4);
     numamem->proximity[0] = node;
-    numamem->flags = cpu_to_le32(!!enabled);
+    numamem->flags = cpu_to_le32(!!enabled) |
+        hotplug ? cpu_to_le32(0x2) : 0;
     numamem->base_addr = cpu_to_le64(base);
     numamem->range_length = cpu_to_le64(len);
 }
@@ -498,6 +499,8 @@ build_srat(GArray *table_data, GArray *linker,
     AcpiSystemResourceAffinityTable *srat;
     AcpiSratProcessorAffinity *core;
     AcpiSratMemoryAffinity *numamem;
+    QemuOpts *opts = qemu_opts_find(qemu_find_opts("memory-opts"), NULL);
+    uint32_t max_mem = opts ? qemu_opt_get_number(opts, "maxmem", 0) : 0;
 
     int i;
     uint64_t curnode;
@@ -536,7 +539,7 @@ build_srat(GArray *table_data, GArray *linker,
     slots = 0;
     next_base = 0;
 
-    acpi_build_srat_memory(numamem, 0, 640*1024, 0, 1);
+    acpi_build_srat_memory(numamem, 0, 640*1024, 0, 1, false);
     next_base = 1024 * 1024;
     numamem++;
     slots++;
@@ -552,7 +555,7 @@ build_srat(GArray *table_data, GArray *linker,
             next_base > guest_info->ram_size) {
             mem_len -= next_base - guest_info->ram_size;
             if (mem_len > 0) {
-                acpi_build_srat_memory(numamem, mem_base, mem_len, i-1, 1);
+                acpi_build_srat_memory(numamem, mem_base, mem_len, i-1, 1, false);
                 numamem++;
                 slots++;
             }
@@ -560,12 +563,28 @@ build_srat(GArray *table_data, GArray *linker,
             mem_len = next_base - guest_info->ram_size;
             next_base += (1ULL << 32) - guest_info->ram_size;
         }
-        acpi_build_srat_memory(numamem, mem_base, mem_len, i-1, 1);
+        acpi_build_srat_memory(numamem, mem_base, mem_len, i-1, 1, false);
         numamem++;
         slots++;
     }
+
+    /* allocate fake hotplug region upto maxmem for Windows */
+/*
+    if (max_mem) {
+        if (sizeof(hwaddr) == 4) {
+            TODO: 32bit, problem sliding pci hole
+            acpi_build_srat_memory(numamem, guest_info->pci_info.w64.end,
+                                   max_mem - guest_info->ram_size, 0, 1, true);
+        } else {
+            acpi_build_srat_memory(numamem, guest_info->pci_info.w64.end,
+                                   max_mem - guest_info->ram_size, 0, 1, true);
+        }
+        numamem++;
+    }
+*/
+
     for (; slots < guest_info->numa_nodes + 2; slots++) {
-        acpi_build_srat_memory(numamem, 0, 0, 0, 0);
+        acpi_build_srat_memory(numamem, 0, 0, 0, 0, false);
         numamem++;
     }
 
