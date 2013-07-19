@@ -98,10 +98,7 @@ struct PCII440FXState {
     PAMMemoryRegion pam_regions[13];
     MemoryRegion smram_region;
     uint8_t smm_enabled;
-    Notifier mem_added_notifier;
-    hwaddr dimm_mem_start;
-    DimmDevice **dimms;
-    int dimms_nr;
+    DimmBus dimm_bus;
 };
 
 
@@ -220,64 +217,15 @@ static int i440fx_pcihost_initfn(SysBusDevice *dev)
     return 0;
 }
 
-static void i440fx_mem_added_req(Notifier *n, void *opaque)
-{
-    PCII440FXState *d = container_of(n, PCII440FXState, mem_added_notifier);
-    DimmDevice *dimm = DIMM(opaque);
-    gchar * name;
-    int i;
-    bool alloc_base = dimm->start ? false : true;
-
-    dimm->start = dimm->start ? dimm->start : d->dimm_mem_start;
-
-    for (i = 0; i < d->dimms_nr; ++i) {
-        if (!d->dimms[i]) { /* find a free slot for dimm */
-            if (dimm->slot_nr < 0) {
-                dimm->slot_nr = i;
-            }
-        }
-        if (alloc_base && d->dimms[i]) { /* find free window */
-            hwaddr  win = d->dimms[i]->start - dimm->start;
-
-            dimm->start  =  win < dimm->size ?
-                d->dimms[i]->start + d->dimms[i]->size : dimm->start;
-        }
-    }
-
-    // TODO: how to nicely abort in hotplug case with slot_nr collision ?
-
-    name = g_strdup_printf("dimm.%d", dimm->slot_nr);
-    object_property_set_link(OBJECT(d), OBJECT(dimm), name, NULL);
-    g_free(name);
-    vmstate_register_ram_global(dimm->mr);
-    memory_region_add_subregion(d->system_memory, dimm->start, dimm->mr);
-}
-
 static int i440fx_initfn(PCIDevice *dev)
 {
     PCII440FXState *d = I440FX_PCI_DEVICE(dev);
-    QemuOpts *opts = qemu_opts_find(qemu_find_opts("memory-opts"), NULL);
 
     d->dev.config[I440FX_SMRAM] = 0x02;
 
     cpu_smm_register(&i440fx_set_smm, d);
 
-    if (opts && qemu_opt_get_number(opts, "slots", 0)) {
-        int i;
-        d->dimms_nr = qemu_opt_get_number(opts, "slots", 0);
-        d->dimms = g_malloc0(sizeof(DimmDevice *) * d->dimms_nr);
-
-	for (i = 0; i < d->dimms_nr; ++i) {
-            gchar * name = g_strdup_printf("dimm.%d", i);
-
-            object_property_add_link(OBJECT(d), name, TYPE_DIMM,
-                (Object **) &d->dimms[i], NULL);
-            g_free(name);
-	}
-    }
-
-    d->mem_added_notifier.notify = i440fx_mem_added_req;
-    qemu_register_mem_added_notifier(&d->mem_added_notifier);
+    qbus_create_inplace(&d->dimm_bus, TYPE_DIMM_BUS, DEVICE(d), "membus");
 
     return 0;
 }
@@ -319,7 +267,7 @@ static PCIBus *i440fx_common_init(const char *device_name,
     f->system_memory = address_space_mem;
     f->pci_address_space = pci_address_space;
     f->ram_memory = ram_memory;
-    f->dimm_mem_start = pci_hole64_start + pci_hole64_size;
+    f->dimm_bus.base = pci_hole64_start + pci_hole64_size;
     memory_region_init_alias(&f->pci_hole, "pci-hole", f->pci_address_space,
                              pci_hole_start, pci_hole_size);
     memory_region_add_subregion(f->system_memory, pci_hole_start, &f->pci_hole);
