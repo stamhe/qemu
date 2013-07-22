@@ -28,6 +28,7 @@ struct PcGuestInfo {
     PcPciInfo pci_info;
     bool has_pci_info;
     hwaddr ram_size;
+    Range hotplug_mem_win;
     unsigned apic_id_limit;
     bool apic_xrupt_override;
     bool has_hpet;

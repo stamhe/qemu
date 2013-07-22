@@ -1054,8 +1054,12 @@ PcGuestInfo *pc_guest_info_init(ram_addr_t below_4g_mem_size,
 {
     PcGuestInfoState *guest_info_state = g_malloc0(sizeof *guest_info_state);
     PcGuestInfo *guest_info = &guest_info_state->info;
+    QemuOpts *opts = qemu_opts_find(qemu_find_opts("memory-opts"), NULL);
+    ram_addr_t maxmem = (opts ? qemu_opt_get_size(opts, "maxmem", ram_size) :
+                         ram_size);
 
     guest_info->ram_size = below_4g_mem_size + above_4g_mem_size;
+
     guest_info->apic_id_limit = pc_apic_id_limit(max_cpus);
     guest_info->apic_xrupt_override = kvm_allows_irq0_override();
     guest_info->numa_nodes = nb_numa_nodes;
@@ -1072,6 +1076,10 @@ PcGuestInfo *pc_guest_info_init(ram_addr_t below_4g_mem_size,
         guest_info->pci_info.w64.begin = 0;
         guest_info->pci_info.w64.end = 0;
     } else {
+        guest_info->hotplug_mem_win.begin = ROUND_UP((0x1ULL << 32) +
+            above_4g_mem_size, 0x1ULL << 30);
+        guest_info->hotplug_mem_win.end = guest_info->hotplug_mem_win.begin +
+            (maxmem - guest_info->ram_size);
         /*
          * BIOS does not set MTRR entries for the 64 bit window, so no need to
          * align address to power of two.  Align address at 1G, this makes sure
@@ -1079,7 +1087,7 @@ PcGuestInfo *pc_guest_info_init(ram_addr_t below_4g_mem_size,
          * pages.
          */
         guest_info->pci_info.w64.begin =
-            ROUND_UP((0x1ULL << 32) + above_4g_mem_size, 0x1ULL << 30);
+            ROUND_UP(guest_info->hotplug_mem_win.end, 0x1ULL << 30);
         guest_info->pci_info.w64.end = guest_info->pci_info.w64.begin +
             (0x1ULL << 31);
         assert(guest_info->pci_info.w64.begin <= guest_info->pci_info.w64.end);
