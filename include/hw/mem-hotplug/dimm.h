@@ -58,9 +58,23 @@ typedef struct DimmDeviceClass {
 
 /**
  * DimmBus:
+ * @base: address from which to start mapping @DimmDevice
+ * @as: hot-plugabble memory area where @DimmDevice-s are attached
  */
 typedef struct DimmBus {
     BusState qbus;
+    hwaddr base;
+    MemoryRegion as;
 } DimmBus;
+
+/**
+ * DimmBusClass:
+ * @register_memory: map @DimmDevice into hot-plugable address space
+ */
+typedef struct DimmBusClass {
+    BusClass parent_class;
+
+    void (*register_memory)(DimmBus *bus, DimmDevice *dimm, Error **errp);
+} DimmBusClass;
 
 #endif
