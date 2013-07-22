@@ -32,6 +32,7 @@
 /**
  * DimmBus:
  * @start: starting physical address, where @DimmDevice is mapped.
+ * Default value: 0, means that address is auto-allocated.
  * @size: amount of memory mapped at @start.
  * @node: numa node to which @DimmDevice is attached.
  * @slot: slot number into which @DimmDevice is plugged in.
@@ -73,6 +74,9 @@ typedef struct DimmBus {
  * @get_free_slot: returns a not occupied slot number. If @hint is provided,
  * it tries to return slot specified by @hint if it's not busy or returns
  * error in @errp.
+ * @get_free_addr: returns address where @DimmDevice of specified size
+ * might be mapped. If @hint is specified it returns hinted address if
+ * region is available or error in @errp.
  * @register_memory: map @DimmDevice into hot-plugable address space
  */
 typedef struct DimmBusClass {
@@ -80,6 +84,8 @@ typedef struct DimmBusClass {
 
     int (*get_free_slot)(DimmBus *bus, const int *hint, Error **errp);
     void (*register_memory)(DimmBus *bus, DimmDevice *dimm, Error **errp);
+    hwaddr (*get_free_addr)(DimmBus *bus, const hwaddr *hint,
+                            uint64_t size, Error **errp);
 } DimmBusClass;
 
 #endif
