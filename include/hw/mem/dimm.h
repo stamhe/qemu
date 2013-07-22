@@ -75,11 +75,15 @@ typedef struct DimmBus {
 /**
  * DimmBusClass:
  * @parent_class: opaque parent class container
+ * @get_free_slot: returns a not occupied slot number. If @hint is provided,
+ * it tries to return slot specified by @hint if it's not busy or returns
+ * error in @errp.
  * @register_memory: map @DimmDevice into hot-plugable address space
  */
 typedef struct DimmBusClass {
     BusClass parent_class;
 
+    int (*get_free_slot)(DimmBus *bus, const int *hint, Error **errp);
     void (*register_memory)(DimmBus *bus, DimmDevice *dimm, Error **errp);
 } DimmBusClass;
 
