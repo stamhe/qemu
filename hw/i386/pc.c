@@ -1081,7 +1081,7 @@ PcGuestInfo *pc_guest_info_init(ram_addr_t below_4g_mem_size,
         guest_info->pci_info.w64.begin =
             ROUND_UP((0x1ULL << 32) + above_4g_mem_size, 0x1ULL << 30);
         guest_info->pci_info.w64.end = guest_info->pci_info.w64.begin +
-            (0x1ULL << 62);
+            (0x1ULL << 31);
         assert(guest_info->pci_info.w64.begin <= guest_info->pci_info.w64.end);
     }
 
