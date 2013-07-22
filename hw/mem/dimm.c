@@ -22,6 +22,7 @@
 #include "qemu/config-file.h"
 #include "qapi/visitor.h"
 #include "qemu/bitmap.h"
+#include "qemu/range.h"
 
 static void dimm_bus_initfn(Object *obj)
 {
@@ -68,6 +69,70 @@ out:
     return slot;
 }
 
+static gint dimm_bus_addr_sort(gconstpointer a, gconstpointer b)
+{
+    DimmDevice *x = DIMM(a);
+    DimmDevice *y = DIMM(b);
+
+    return x->start - y->start;
+}
+
+static int dimm_bus_built_dimm_list(DeviceState *dev, void *opaque)
+{
+    GSList **list = opaque;
+
+    if (dev->realized) { /* only realized DIMMs matter */
+        *list = g_slist_insert_sorted(*list, dev, dimm_bus_addr_sort);
+    }
+    return 0;
+}
+
+static hwaddr dimm_bus_get_free_addr(DimmBus *bus, const hwaddr *hint,
+                                     uint64_t size, Error **errp)
+{
+    GSList *list = NULL, *item;
+    hwaddr new_start, ret;
+    uint64_t as_size;
+
+    if (!bus->base) {
+        error_setg(errp, "adding memory to '%s' is disabled", BUS(bus)->name);
+        return 0;
+    }
+
+    qbus_walk_children(BUS(bus), dimm_bus_built_dimm_list, NULL, &list);
+
+    if (hint) {
+        new_start = *hint;
+    } else {
+        new_start = bus->base;
+    }
+
+    /* find address range that will fit new DIMM */
+    for (item = list; item; item = g_slist_next(item)) {
+        DimmDevice *dimm = item->data;
+        if (ranges_overlap(dimm->start, memory_region_size(dimm->mr),
+                           new_start, size)) {
+            if (hint) {
+                DeviceState *d = DEVICE(dimm);
+                error_setg(errp, "address range conflicts with '%s'", d->id);
+                break;
+            }
+            new_start = dimm->start + memory_region_size(dimm->mr);
+        }
+    }
+    ret = new_start;
+
+    g_slist_free(list);
+
+    as_size = memory_region_size(&bus->as);
+    if ((new_start + size) > (bus->base + as_size)) {
+        error_setg(errp, "can't add memory beyond 0x%" PRIx64,
+                   bus->base + as_size);
+    }
+
+    return ret;
+}
+
 static void dimm_bus_register_memory(DimmBus *bus, DimmDevice *dimm,
                                      Error **errp)
 {
@@ -84,6 +149,7 @@ static void dimm_bus_class_init(ObjectClass *oc, void *data)
     bc->max_dev = qemu_opt_get_number(opts, "slots", 0);
     dbc->register_memory = dimm_bus_register_memory;
     dbc->get_free_slot = dimm_bus_get_free_slot;
+    dbc->get_free_addr = dimm_bus_get_free_addr;
 }
 
 static const TypeInfo dimm_bus_info = {
@@ -174,6 +240,7 @@ static void dimm_realize(DeviceState *dev, Error **errp)
     BusClass *bc = BUS_GET_CLASS(bus);
     DimmBusClass *dbc = DIMM_BUS_GET_CLASS(bus);
     int *slot_hint;
+    hwaddr *start_hint;
 
     if (!dimm->mr) {
         error_setg(errp, "'memdev' property is not set");
@@ -196,6 +263,18 @@ static void dimm_realize(DeviceState *dev, Error **errp)
         return;
     }
 
+    start_hint = !dimm->start ? NULL : &dimm->start;
+    if (start_hint && (dimm->start < bus->base)) {
+        error_setg(errp, "can't map DIMM below: 0x%" PRIx64, bus->base);
+        return;
+    }
+
+    g_assert(dbc->get_free_addr);
+    dimm->start = dbc->get_free_addr(bus, start_hint,
+                                     memory_region_size(dimm->mr), errp);
+    if (error_is_set(errp)) {
+        return;
+    }
 
     g_assert(dbc->register_memory);
     dbc->register_memory(bus, dimm, errp);
