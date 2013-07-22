@@ -695,24 +695,26 @@ static uint64_t acpi_memory_hotplug_read(void *opaque, hwaddr addr,
     mdev = &mem_st->devs[mem_st->selector];
     switch (addr) {
     case 0x0: /* Lo part of phys address where DIMM is mapped */
-        val = object_property_get_int(OBJECT(mdev->dimm), "start", NULL);
+        val = cpu_to_le64(object_property_get_int(OBJECT(mdev->dimm),
+                          "start", NULL));
         break;
     case 0x4: /* Hi part of phys address where DIMM is mapped */
-        val = object_property_get_int(OBJECT(mdev->dimm), "start", NULL) >> 32;
+        val = cpu_to_le64(object_property_get_int(OBJECT(mdev->dimm),
+                          "start", NULL)) >> 32;
         break;
     case 0x8: /* Lo part of DIMM size */
-        val = object_property_get_int(OBJECT(mdev->dimm), "size", NULL);
+        val = cpu_to_le64(object_property_get_int(OBJECT(mdev->dimm),
+                          "size", NULL));
         break;
     case 0xc: /* Hi part of DIMM size */
-        val = object_property_get_int(OBJECT(mdev->dimm), "size", NULL) >> 32;
+        val = cpu_to_le64(object_property_get_int(OBJECT(mdev->dimm),
+                          "size", NULL)) >> 32;
         break;
     case 0x10: /* node proximity for _PXM method */
-        val = object_property_get_int(OBJECT(mdev->dimm), "node", NULL);
+        val = cpu_to_le32(object_property_get_int(OBJECT(mdev->dimm),
+                          "node", NULL));
         break;
-    case 0x14: /* intf version */
-        val = 1;
-        break;
-    case 0x15: /* pack and return is_* fields */
+    case 0x14: /* pack and return is_* fields */
         val |= mdev->is_enabled   ? 1 : 0;
         val |= mdev->is_inserting ? 2 : 0;
         break;
@@ -738,30 +740,34 @@ static void acpi_memory_hotplug_write(void *opaque, hwaddr addr, uint64_t data,
 
     switch (addr) {
     case 0x0: /* DIMM slot selector */
-        mem_st->selector = data;
+        mem_st->selector = le32_to_cpu(data);
         break;
-    case 0x4: /* _OST event  */
+    case 0x4: { /* _OST event  */
+        uint32_t event = le32_to_cpu(data);
         mdev = &mem_st->devs[mem_st->selector];
-        if (data == 1) {
+        if (event == 1) {
             /* TODO: handle device insert OST event */
-        } else if (data == 3) {
+        } else if (event == 3) {
             /* TODO: handle device remove OST event */
         }
-        mdev->ost_event = data;
+        mdev->ost_event = event;
         break;
+    }
     case 0x8: /* _OST status */
         mdev = &mem_st->devs[mem_st->selector];
-        mdev->ost_status = data;
+        mdev->ost_status = le32_to_cpu(data);
         /* TODO: report async error */
         /* TODO: implement memory removal on guest signal */
         break;
-    case 0x15:
+    case 0x14: {
+        uint8_t ctrl = le32_to_cpu(data);
         mdev = &mem_st->devs[mem_st->selector];
-        if (data & 2) { /* clear insert event */
+        if (ctrl & 2) { /* clear insert event */
             mdev->is_inserting  = false;
         }
         break;
     }
+    } /* switch (addr) */
 
 }
 static const MemoryRegionOps acpi_memory_hotplug_ops = {

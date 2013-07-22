@@ -168,7 +168,7 @@ uint32_t acpi_gpe_ioport_readb(ACPIREGS *ar, uint32_t addr);
 
 void acpi_update_sci(ACPIREGS *acpi_regs, qemu_irq irq, uint32_t gpe0_sts_mask);
 
-#define ACPI_MEMORY_HOTPLUG_IO_LEN 24
+#define ACPI_MEMORY_HOTPLUG_IO_LEN 0x15
 #define ACPI_MEMORY_HOTPLUG_BASE 0x0a00
 
 #define ACPI_MEMORY_HOTPLUG_STATUS 8
