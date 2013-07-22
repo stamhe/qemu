@@ -20,6 +20,7 @@
 
 #include "hw/mem-hotplug/dimm.h"
 #include "qemu/config-file.h"
+#include "qemu/bitmap.h"
 
 static void dimm_bus_initfn(Object *obj)
 {
@@ -27,6 +28,45 @@ static void dimm_bus_initfn(Object *obj)
 
     b->allow_hotplug = true;
 }
+
+static int dimm_bus_slot2bitmap(DeviceState *dev, void *opaque)
+{
+    unsigned long *bitmap = opaque;
+    BusClass *bc = BUS_GET_CLASS(qdev_get_parent_bus(dev));
+    DimmDevice *d = DIMM(dev);
+
+    if (dev->realized) { /* count only realized DIMMs */
+        g_assert(d->slot < bc->max_dev);
+        set_bit(d->slot, bitmap);
+    }
+    return 0;
+}
+
+static int dimm_bus_get_free_slot(DimmBus *bus, const int *hint, Error **errp)
+{
+    BusClass *bc = BUS_GET_CLASS(bus);
+    unsigned long *bitmap = bitmap_new(bc->max_dev);
+    int slot = 0;
+
+    qbus_walk_children(BUS(bus), dimm_bus_slot2bitmap, NULL, bitmap);
+
+    /* check if requested slot is not occupied */
+    if (hint) {
+        if (!test_bit(*hint, bitmap)) {
+            slot = *hint;
+        } else {
+            error_setg(errp, "slot %d is busy", *hint);
+        }
+        goto out;
+    }
+
+    /* search for free slot */
+    slot = find_first_zero_bit(bitmap, bc->max_dev);
+out:
+    g_free(bitmap);
+    return slot;
+}
+
 static void dimm_bus_register_memory(DimmBus *bus, DimmDevice *dimm,
                                      Error **errp)
 {
@@ -44,6 +84,7 @@ static void dimm_bus_class_init(ObjectClass *klass, void *data)
         bc->max_dev = qemu_opt_get_number(opts, "slots", 0);
     }
     dc->register_memory = dimm_bus_register_memory;
+    dc->get_free_slot = dimm_bus_get_free_slot;
 }
 
 static const TypeInfo dimm_bus_info = {
@@ -59,7 +100,7 @@ static Property dimm_properties[] = {
     DEFINE_PROP_UINT64("start", DimmDevice, start, 0),
     DEFINE_PROP_SIZE("size", DimmDevice, size, DEFAULT_DIMMSIZE),
     DEFINE_PROP_UINT32("node", DimmDevice, node, 0),
-    DEFINE_PROP_INT32("slot", DimmDevice, slot, 0),
+    DEFINE_PROP_INT32("slot", DimmDevice, slot, -1),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -69,6 +110,7 @@ static void dimm_realize(DeviceState *dev, Error **errp)
     DimmBus *bus = DIMM_BUS(qdev_get_parent_bus(dev));
     BusClass *bc = BUS_GET_CLASS(bus);
     DimmBusClass *dc = DIMM_BUS_GET_CLASS(bus);
+    int *slot_hint;
 
     if (!dev->id) {
         error_setg(errp, "missing 'id' property");
@@ -79,6 +121,13 @@ static void dimm_realize(DeviceState *dev, Error **errp)
         error_setg(errp, "maximum allowed slot is: %d", bc->max_dev - 1);
         return;
     }
+    g_assert(dc->get_free_slot);
+    slot_hint = dimm->slot < 0 ? NULL : &dimm->slot;
+    dimm->slot = dc->get_free_slot(bus, slot_hint, errp);
+    if (error_is_set(errp)) {
+        return;
+    }
+
 
     memory_region_init_ram(&dimm->mr, dev->id, dimm->size);
 
