@@ -36,6 +36,7 @@
 #include "hw/nvram/fw_cfg.h"
 #include "bios-linker-loader.h"
 #include "hw/loader.h"
+#include "qemu/config-file.h"
 
 /* Supported chipsets: */
 #include "hw/acpi/piix4.h"
@@ -614,6 +615,14 @@ static inline char acpi_get_hex(uint32_t val)
 #define ACPI_PCIHP_SIZEOF (*ssdt_pcihp_end - *ssdt_pcihp_start)
 #define ACPI_PCIHP_AML (ssdp_pcihp_aml + *ssdt_pcihp_start)
 
+#include "hw/i386/ssdt-mem.hex"
+
+/* 0x5B 0x82 DeviceOp PkgLength NameString DimmID */
+#define ACPI_MEM_OFFSET_HEX (*ssdt_mem_name - *ssdt_mem_start + 2)
+#define ACPI_MEM_OFFSET_ID (*ssdt_mem_id - *ssdt_mem_start + 7)
+#define ACPI_MEM_SIZEOF (*ssdt_mem_end - *ssdt_mem_start)
+#define ACPI_MEM_AML (ssdm_mem_aml + *ssdt_mem_start)
+
 #define ACPI_SSDT_SIGNATURE 0x54445353 /* SSDT */
 #define ACPI_SSDT_HEADER_LENGTH 36
 
@@ -751,6 +760,33 @@ build_ssdt(GArray *table_data, GArray *linker,
             build_free_array(package);
         }
 
+        {
+            QemuOpts *opts = qemu_opts_find(qemu_find_opts("memory-opts"),
+                                            NULL);
+            uint32_t nr_mem = opts ? qemu_opt_get_number(opts, "slots", 0) : 0;
+            if (nr_mem) {
+                /* build Name(MDNR, acpi_mem_devs) */
+                build_append_byte(sb_scope, 0x08); /* NameOp */
+                build_append_nameseg(sb_scope, "MDNR");
+                build_append_value(sb_scope, nr_mem, sizeof(nr_mem));
+
+                /* build mem devices */
+                for (i = 0; i < nr_mem; i++) {
+                    char id[3];
+                    uint8_t *mem = acpi_data_push(sb_scope, ACPI_MEM_SIZEOF);
+
+                    snprintf(id, sizeof(id), "%02x", i);
+                    memcpy(mem, ACPI_MEM_AML, ACPI_MEM_SIZEOF);
+                    memcpy(mem + ACPI_MEM_OFFSET_HEX, id, 2);
+                    memcpy(mem + ACPI_MEM_OFFSET_ID, id, 2);
+                }
+
+                /* build Method(MTFY, 2) {
+                 *     If (LEqual(Arg0, 0x00)) {Notify(MP00, Arg1)} ...
+                 */
+                build_append_notify(sb_scope, "MTFY", "MP%0.02X", 0, nr_mem);
+            }
+        }
         {
             GArray *pci0 = build_alloc_array();
             uint8_t op = 0x10; /* ScopeOp */;
