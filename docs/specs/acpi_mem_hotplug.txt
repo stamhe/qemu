@@ -1,0 +1,38 @@
+QEMU<->ACPI BIOS memory hotplug interface
+--------------------------------------
+
+ACPI BIOS GPE.3 handler is dedicated for notifying OS of memory hot-add
+or hot-remove events. Read-only.
+
+Memory Dimm hot-plug interface (IO port 0xaf80-0xaf97, 1-4 byte access):
+---------------------------------------------------------------
+0xaf80:
+  read access:
+      [0x0-0x3] Lo part of memory device phys address
+      [0x4-0x7] Hi part of memory device phys address
+      [0x8-0xb] Lo part of memory device size in bytes
+      [0xc-0xf] Hi part of memory device size in bytes
+      [0x14] Memory hot-plug interface version
+      [0x15] Memory device status fields
+          bits:
+              1: device is enabled, end may be used by guest code
+              2: device insert event, used by ACPI BIOS to distinguish
+                 device for which no device check event to OSPM was issued
+      [0x16-0x17] reserved
+
+  write access:
+      [0x0-0x3] Memory device slot selector, selects active memory device.
+                All following accesses to other registers in 0xaf80-0xaf97
+                region will read/store data from/to selected memory device.
+      [0x4-0x7] OST event code reported by OSPM
+      [0x8-0xb] OST status code reported by OSPM
+      [0x15] Memory device status fields
+          bits:
+              2: if set to 1 clears device insert event, set by ACPI BIOS
+                 after it has sent device check event to OSPM for
+                 seleted memory device
+
+Selecting memory device slot beyond present range has no effect on platform:
+   - following write access to memory hot-plug registers except of
+     [0x0-0x3] is ignored;
+   - following read access to memory hot-plug registers returns 0
