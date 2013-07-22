@@ -22,6 +22,17 @@
 #include "qemu/config-file.h"
 #include "qemu/bitmap.h"
 #include "qemu/range.h"
+#include "qemu/notify.h"
+#include "sysemu/sysemu.h"
+
+/* Memory hot-plug notifiers */
+static NotifierList mem_added_notifiers =
+    NOTIFIER_LIST_INITIALIZER(mem_added_notifiers);
+
+void qemu_register_mem_added_notifier(Notifier *notifier)
+{
+    notifier_list_add(&mem_added_notifiers, notifier);
+}
 
 static void dimm_bus_initfn(Object *obj)
 {
@@ -204,6 +215,8 @@ static void dimm_realize(DeviceState *dev, Error **errp)
 
     g_assert(dc->register_memory);
     dc->register_memory(bus, dimm, errp);
+
+    notifier_list_notify(&mem_added_notifiers, dev);
 }
 
 static void dimm_class_init(ObjectClass *klass, void *data)
