@@ -32,6 +32,7 @@
 #include "hw/xen/xen.h"
 #include "hw/pci-host/pam.h"
 #include "sysemu/sysemu.h"
+#include "hw/mem-hotplug/dimm.h"
 
 /*
  * I440FX chipset data sheet.
@@ -96,6 +97,7 @@ struct PCII440FXState {
     PAMMemoryRegion pam_regions[13];
     MemoryRegion smram_region;
     uint8_t smm_enabled;
+    DimmBus dimm_bus;
 };
 
 
@@ -221,6 +223,8 @@ static int i440fx_initfn(PCIDevice *dev)
     d->dev.config[I440FX_SMRAM] = 0x02;
 
     cpu_smm_register(&i440fx_set_smm, d);
+
+    qbus_create_inplace(&d->dimm_bus, TYPE_DIMM_BUS, DEVICE(d), "membus");
     return 0;
 }
 
@@ -244,6 +248,7 @@ static PCIBus *i440fx_common_init(const char *device_name,
     PIIX3State *piix3;
     PCII440FXState *f;
     Range *pci_hole64 = &guest_info->pci_info.w64;
+    Range *hotplug_mem = &guest_info->hotplug_mem_win;
     unsigned i;
 
     dev = qdev_create(NULL, "i440FX-pcihost");
@@ -260,6 +265,13 @@ static PCIBus *i440fx_common_init(const char *device_name,
     f->system_memory = address_space_mem;
     f->pci_address_space = pci_address_space;
     f->ram_memory = ram_memory;
+
+    f->dimm_bus.base = hotplug_mem->begin;
+    memory_region_init(&f->dimm_bus.as, "hotplug-memory",
+                       hotplug_mem->end - hotplug_mem->begin);
+    memory_region_add_subregion(f->system_memory, f->dimm_bus.base,
+                                &f->dimm_bus.as);
+
     memory_region_init_alias(&f->pci_hole, "pci-hole", f->pci_address_space,
                              pci_hole_start, pci_hole_size);
     memory_region_add_subregion(f->system_memory, pci_hole_start, &f->pci_hole);
