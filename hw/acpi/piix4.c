@@ -75,6 +75,7 @@ typedef struct PIIX4PMState {
     MemoryRegion io_gpe;
     MemoryRegion io_pci;
     MemoryRegion io_cpu;
+    MemoryRegion io_mem;
     ACPIREGS ar;
 
     APMState apm;
@@ -99,6 +100,8 @@ typedef struct PIIX4PMState {
 
     CPUStatus gpe_cpu;
     Notifier cpu_added_notifier;
+
+    MemHotplugState  gpe_mem;
 } PIIX4PMState;
 
 #define TYPE_PIIX4_PM "PIIX4_PM"
@@ -688,6 +691,16 @@ static void piix4_cpu_added_req(Notifier *n, void *opaque)
     piix4_cpu_hotplug_req(s, CPU(opaque), PLUG);
 }
 
+int piix4_mem_hotplug(DeviceState *hotplug_dev, DeviceState *dev,
+                      HotplugState state)
+{
+    PIIX4PMState *s = PIIX4_PM(hotplug_dev);
+
+    acpi_memory_hotplug_cb(&s->ar, &s->gpe_mem, dev, state);
+    acpi_update_sci(&s->ar, s->irq, ACPI_MEMORY_HOTPLUG_STATUS);
+    return 0;
+}
+
 static int piix4_device_hotplug(DeviceState *qdev, DeviceState *dev,
                                 HotplugState state);
 
@@ -718,6 +731,9 @@ static void piix4_acpi_system_hot_add_init(MemoryRegion *parent,
     memory_region_add_subregion(parent, PIIX4_PROC_BASE, &s->io_cpu);
     s->cpu_added_notifier.notify = piix4_cpu_added_req;
     qemu_register_cpu_added_notifier(&s->cpu_added_notifier);
+
+    acpi_memory_hotplug_init(OBJECT(s), &s->io_mem, &s->gpe_mem);
+    memory_region_add_subregion(parent, ACPI_MEMORY_HOTPLUG_BASE, &s->io_mem);
 }
 
 static void enable_device(PIIX4PMState *s, int slot)
