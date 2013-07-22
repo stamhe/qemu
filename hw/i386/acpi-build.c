@@ -36,6 +36,7 @@
 #include "hw/nvram/fw_cfg.h"
 #include "bios-linker-loader.h"
 #include "hw/loader.h"
+#include "qemu/config-file.h"
 
 /* Supported chipsets: */
 #include "hw/acpi/piix4.h"
@@ -68,6 +69,7 @@ typedef struct AcpiPmInfo {
     uint32_t gpe0_blk;
     uint32_t gpe0_blk_len;
     uint32_t io_base;
+    uint16_t mem_hotplug_io_base;
 } AcpiPmInfo;
 
 typedef struct AcpiMiscInfo {
@@ -169,6 +171,8 @@ static void acpi_get_pm_info(AcpiPmInfo *pm)
                                            NULL);
     pm->gpe0_blk_len = object_property_get_int(obj, ACPI_PM_PROP_GPE0_BLK_LEN,
                                                NULL);
+    pm->mem_hotplug_io_base =
+        object_property_get_int(obj, ACPI_MEMORY_HOTPLUG_IO_BASE_PROP, NULL);
 }
 
 static void acpi_get_hotplug_info(AcpiMiscInfo *misc)
@@ -614,6 +618,14 @@ static inline char acpi_get_hex(uint32_t val)
 #define ACPI_PCIHP_SIZEOF (*ssdt_pcihp_end - *ssdt_pcihp_start)
 #define ACPI_PCIHP_AML (ssdp_pcihp_aml + *ssdt_pcihp_start)
 
+#include "hw/i386/ssdt-mem.hex"
+
+/* 0x5B 0x82 DeviceOp PkgLength NameString DimmID */
+#define ACPI_MEM_OFFSET_HEX (*ssdt_mem_name - *ssdt_mem_start + 2)
+#define ACPI_MEM_OFFSET_ID (*ssdt_mem_id - *ssdt_mem_start + 7)
+#define ACPI_MEM_SIZEOF (*ssdt_mem_end - *ssdt_mem_start)
+#define ACPI_MEM_AML (ssdm_mem_aml + *ssdt_mem_start)
+
 #define ACPI_SSDT_SIGNATURE 0x54445353 /* SSDT */
 #define ACPI_SSDT_HEADER_LENGTH 36
 
@@ -687,6 +699,8 @@ build_ssdt(GArray *table_data, GArray *linker,
            AcpiCpuInfo *cpu, AcpiPmInfo *pm, AcpiMiscInfo *misc,
            PcPciInfo *pci, PcGuestInfo *guest_info)
 {
+    QemuOpts *opts = qemu_opts_find(qemu_find_opts("memory-opts"), NULL);
+    uint32_t nr_mem = qemu_opt_get_number(opts, "slots", 0);
     int acpi_cpus = MIN(0xff, guest_info->apic_id_limit);
     int ssdt_start = table_data->len;
     uint8_t *ssdt_ptr;
@@ -709,6 +723,10 @@ build_ssdt(GArray *table_data, GArray *linker,
 
     *(uint16_t *)(ssdt_ptr + *ssdt_isa_pest) =
         cpu_to_le16(misc->pvpanic_port);
+
+    *(uint16_t *)(ssdt_ptr + *ssdt_mctrl_port) =
+        cpu_to_le16(pm->mem_hotplug_io_base);
+    *(int32_t *)(ssdt_ptr + *ssdt_mctrl_nr_slots) = cpu_to_le32(nr_mem);
 
     {
         GArray *sb_scope = build_alloc_array();
@@ -749,6 +767,24 @@ build_ssdt(GArray *table_data, GArray *linker,
             build_package(package, op, 2);
             build_append_array(sb_scope, package);
             build_free_array(package);
+        }
+
+        if (nr_mem) {
+            /* build memory devices */
+            for (i = 0; i < nr_mem; i++) {
+                char id[3];
+                uint8_t *mem = acpi_data_push(sb_scope, ACPI_MEM_SIZEOF);
+
+                snprintf(id, sizeof(id), "%02x", i);
+                memcpy(mem, ACPI_MEM_AML, ACPI_MEM_SIZEOF);
+                memcpy(mem + ACPI_MEM_OFFSET_HEX, id, 2);
+                memcpy(mem + ACPI_MEM_OFFSET_ID, id, 2);
+            }
+
+            /* build Method(MTFY, 2) {
+             *     If (LEqual(Arg0, 0x00)) {Notify(MP00, Arg1)} ...
+             */
+            build_append_notify(sb_scope, "MTFY", "MP%0.02X", 0, nr_mem);
         }
 
         {
