@@ -233,8 +233,7 @@ static PCIBus *i440fx_common_init(const char *device_name,
                                   ram_addr_t ram_size,
                                   hwaddr pci_hole_start,
                                   hwaddr pci_hole_size,
-                                  hwaddr pci_hole64_start,
-                                  hwaddr pci_hole64_size,
+                                  PcGuestInfo *guest_info,
                                   MemoryRegion *pci_address_space,
                                   MemoryRegion *ram_memory)
 {
@@ -244,6 +243,7 @@ static PCIBus *i440fx_common_init(const char *device_name,
     PCIHostState *s;
     PIIX3State *piix3;
     PCII440FXState *f;
+    Range *pci_hole64 = &guest_info->pci_info.w64;
     unsigned i;
 
     dev = qdev_create(NULL, "i440FX-pcihost");
@@ -264,10 +264,10 @@ static PCIBus *i440fx_common_init(const char *device_name,
                              pci_hole_start, pci_hole_size);
     memory_region_add_subregion(f->system_memory, pci_hole_start, &f->pci_hole);
     memory_region_init_alias(&f->pci_hole_64bit, "pci-hole64",
-                             f->pci_address_space,
-                             pci_hole64_start, pci_hole64_size);
-    if (pci_hole64_size) {
-        memory_region_add_subregion(f->system_memory, pci_hole64_start,
+                             f->pci_address_space, pci_hole64->begin,
+                             pci_hole64->end - pci_hole64->begin);
+    if (pci_hole64->end > pci_hole64->begin) {
+        memory_region_add_subregion(f->system_memory, pci_hole64->begin,
                                     &f->pci_hole_64bit);
     }
     memory_region_init_alias(&f->smram_region, "smram-region",
@@ -321,8 +321,7 @@ PCIBus *i440fx_init(PCII440FXState **pi440fx_state, int *piix3_devfn,
                     ram_addr_t ram_size,
                     hwaddr pci_hole_start,
                     hwaddr pci_hole_size,
-                    hwaddr pci_hole64_start,
-                    hwaddr pci_hole64_size,
+                    PcGuestInfo *guest_info,
                     MemoryRegion *pci_memory, MemoryRegion *ram_memory)
 
 {
@@ -332,7 +331,7 @@ PCIBus *i440fx_init(PCII440FXState **pi440fx_state, int *piix3_devfn,
                            piix3_devfn, isa_bus, pic,
                            address_space_mem, address_space_io, ram_size,
                            pci_hole_start, pci_hole_size,
-                           pci_hole64_start, pci_hole64_size,
+                           guest_info,
                            pci_memory, ram_memory);
     return b;
 }

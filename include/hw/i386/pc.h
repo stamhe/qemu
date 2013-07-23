@@ -180,8 +180,7 @@ PCIBus *i440fx_init(PCII440FXState **pi440fx_state, int *piix_devfn,
                     ram_addr_t ram_size,
                     hwaddr pci_hole_start,
                     hwaddr pci_hole_size,
-                    hwaddr pci_hole64_start,
-                    hwaddr pci_hole64_size,
+                    PcGuestInfo *guest_info,
                     MemoryRegion *pci_memory,
                     MemoryRegion *ram_memory);
 

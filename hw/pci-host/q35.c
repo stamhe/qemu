@@ -252,6 +252,7 @@ static int mch_init(PCIDevice *d)
     int i;
     hwaddr pci_hole64_size;
     MCHPCIState *mch = MCH_PCI_DEVICE(d);
+    Range *pci_hole64 = &mch->guest_info->pci_info.w64;
 
     /* Leave enough space for the biggest MCFG BAR */
     /* TODO: this matches current bios behaviour, but
@@ -270,14 +271,14 @@ static int mch_init(PCIDevice *d)
     memory_region_add_subregion(mch->system_memory, mch->below_4g_mem_size,
                                 &mch->pci_hole);
     pci_hole64_size = (sizeof(hwaddr) == 4 ? 0 :
-                       ((uint64_t)1 << 62));
+                       pci_hole64->end - pci_hole64->begin);
     memory_region_init_alias(&mch->pci_hole_64bit, "pci-hole64",
                              mch->pci_address_space,
-                             0x100000000ULL + mch->above_4g_mem_size,
+                             pci_hole64->begin,
                              pci_hole64_size);
     if (pci_hole64_size) {
         memory_region_add_subregion(mch->system_memory,
-                                    0x100000000ULL + mch->above_4g_mem_size,
+                                    pci_hole64->begin,
                                     &mch->pci_hole_64bit);
     }
     /* smram */
