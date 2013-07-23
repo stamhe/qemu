@@ -477,15 +477,19 @@ build_hpet(GArray *table_data, GArray *linker)
                  (void*)hpet, ACPI_HPET_SIGNATURE, sizeof(*hpet), 1);
 }
 
+#define SRAT_MEM_ENABLED 1
+#define SRAT_MEM_HOTPLUG 2
+
 static void
-acpi_build_srat_memory(AcpiSratMemoryAffinity *numamem,
-                       uint64_t base, uint64_t len, int node, int enabled)
+acpi_build_srat_memory(AcpiSratMemoryAffinity *numamem, uint64_t base,
+                       uint64_t len, int node, bool enabled, bool hotplug)
 {
     numamem->type = ACPI_SRAT_MEMORY;
     numamem->length = sizeof(*numamem);
     memset(numamem->proximity, 0, 4);
     numamem->proximity[0] = node;
-    numamem->flags = cpu_to_le32(!!enabled);
+    numamem->flags |= enabled ? cpu_to_le32(SRAT_MEM_ENABLED) : 0;
+    numamem->flags |= hotplug ? cpu_to_le32(SRAT_MEM_HOTPLUG) : 0;
     numamem->base_addr = cpu_to_le64(base);
     numamem->range_length = cpu_to_le64(len);
 }
@@ -503,10 +507,13 @@ build_srat(GArray *table_data, GArray *linker,
     int srat_size;
     int slots;
     uint64_t mem_len, mem_base, next_base;
+    uint64_t hotplug_mem_size = guest_info->hotplug_mem_win.end -
+        guest_info->hotplug_mem_win.begin;
 
     srat_size = sizeof(*srat) +
         sizeof(AcpiSratProcessorAffinity) * guest_info->apic_id_limit +
-        sizeof(AcpiSratMemoryAffinity) * (guest_info->numa_nodes + 2);
+        sizeof(AcpiSratMemoryAffinity) * (guest_info->numa_nodes + 2 +
+        (hotplug_mem_size ? 1 : 0));
 
     srat = acpi_data_push(table_data, srat_size);
     srat->reserved1 = cpu_to_le32(1);
@@ -535,7 +542,7 @@ build_srat(GArray *table_data, GArray *linker,
     slots = 0;
     next_base = 0;
 
-    acpi_build_srat_memory(numamem, 0, 640*1024, 0, 1);
+    acpi_build_srat_memory(numamem, 0, 640*1024, 0, true, false);
     next_base = 1024 * 1024;
     numamem++;
     slots++;
@@ -551,7 +558,8 @@ build_srat(GArray *table_data, GArray *linker,
             next_base > guest_info->ram_size) {
             mem_len -= next_base - guest_info->ram_size;
             if (mem_len > 0) {
-                acpi_build_srat_memory(numamem, mem_base, mem_len, i-1, 1);
+                acpi_build_srat_memory(numamem, mem_base, mem_len, i-1,
+                                       true, false);
                 numamem++;
                 slots++;
             }
@@ -559,13 +567,20 @@ build_srat(GArray *table_data, GArray *linker,
             mem_len = next_base - guest_info->ram_size;
             next_base += (1ULL << 32) - guest_info->ram_size;
         }
-        acpi_build_srat_memory(numamem, mem_base, mem_len, i-1, 1);
+        acpi_build_srat_memory(numamem, mem_base, mem_len, i-1, true, false);
         numamem++;
         slots++;
     }
+
     for (; slots < guest_info->numa_nodes + 2; slots++) {
-        acpi_build_srat_memory(numamem, 0, 0, 0, 0);
+        acpi_build_srat_memory(numamem, 0, 0, 0, false, false);
         numamem++;
+    }
+
+    /* allocate fake hotplug region upto maxmem for Windows */
+    if (hotplug_mem_size) {
+        acpi_build_srat_memory(numamem, guest_info->hotplug_mem_win.begin,
+                               hotplug_mem_size, 0, true, true);
     }
 
     build_header(linker, table_data,
