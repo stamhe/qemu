@@ -42,4 +42,10 @@ static inline int ranges_overlap(uint64_t first1, uint64_t len1,
     return !(last2 < first1 || last1 < first2);
 }
 
+/* Get range size */
+static inline uint64_t range_size(Range r)
+{
+    return r.end - r.begin;
+}
+
 #endif
