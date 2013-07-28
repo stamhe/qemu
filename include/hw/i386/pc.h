@@ -18,7 +18,6 @@ typedef struct PcPciInfo {
 } PcPciInfo;
 
 struct PcGuestInfo {
-    PcPciInfo pci_info;
     bool has_pci_info;
     FWCfgState *fw_cfg;
 };
@@ -100,6 +99,7 @@ void pc_acpi_init(const char *default_dsdt);
 
 PcGuestInfo *pc_guest_info_init(ram_addr_t below_4g_mem_size,
                                 ram_addr_t above_4g_mem_size);
+void pc_init_pci64_hole(PcPciInfo *pci_info, uint64_t pci_hole64_start);
 
 FWCfgState *pc_memory_init(MemoryRegion *system_memory,
                            const char *kernel_filename,
@@ -150,8 +150,7 @@ PCIBus *i440fx_init(PCII440FXState **pi440fx_state, int *piix_devfn,
                     ram_addr_t ram_size,
                     hwaddr pci_hole_start,
                     hwaddr pci_hole_size,
-                    hwaddr pci_hole64_start,
-                    hwaddr pci_hole64_size,
+                    ram_addr_t above_4g_mem_size,
                     MemoryRegion *pci_memory,
                     MemoryRegion *ram_memory);
 

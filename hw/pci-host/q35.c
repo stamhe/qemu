@@ -67,6 +67,21 @@ static const char *q35_host_root_bus_path(PCIHostState *host_bridge,
 static Property mch_props[] = {
     DEFINE_PROP_UINT64("MCFG", Q35PCIHost, parent_obj.base_addr,
                         MCH_HOST_BRIDGE_PCIEXBAR_DEFAULT),
+    DEFINE_PROP_UINT64("pci_hole64_start", Q35PCIHost,
+                       mch.pci_info.w64.begin, 0),
+    DEFINE_PROP_UINT64("pci_hole64_end", Q35PCIHost,
+                       mch.pci_info.w64.end, 0),
+    /* Leave enough space for the biggest MCFG BAR */
+    /* TODO: this matches current bios behaviour, but
+     * it's not a power of two, which means an MTRR
+     * can't cover it exactly.
+     */
+    DEFINE_PROP_UINT64("pci_hole_start", Q35PCIHost,
+                       mch.pci_info.w32.begin,
+                       MCH_HOST_BRIDGE_PCIEXBAR_DEFAULT +
+                       MCH_HOST_BRIDGE_PCIEXBAR_MAX),
+    DEFINE_PROP_UINT64("pci_hole_end", Q35PCIHost,
+                       mch.pci_info.w32.end, IO_APIC_DEFAULT_ADDRESS),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -255,14 +270,6 @@ static int mch_init(PCIDevice *d)
     hwaddr pci_hole64_size;
     MCHPCIState *mch = MCH_PCI_DEVICE(d);
 
-    /* Leave enough space for the biggest MCFG BAR */
-    /* TODO: this matches current bios behaviour, but
-     * it's not a power of two, which means an MTRR
-     * can't cover it exactly.
-     */
-    mch->guest_info->pci_info.w32.begin = MCH_HOST_BRIDGE_PCIEXBAR_DEFAULT +
-        MCH_HOST_BRIDGE_PCIEXBAR_MAX;
-
     /* setup pci memory regions */
     memory_region_init_alias(&mch->pci_hole, OBJECT(mch), "pci-hole",
                              mch->pci_address_space,
@@ -270,15 +277,16 @@ static int mch_init(PCIDevice *d)
                              0x100000000ULL - mch->below_4g_mem_size);
     memory_region_add_subregion(mch->system_memory, mch->below_4g_mem_size,
                                 &mch->pci_hole);
-    pci_hole64_size = (sizeof(hwaddr) == 4 ? 0 :
-                       ((uint64_t)1 << 62));
+
+    pc_init_pci64_hole(&mch->pci_info, 0x100000000ULL + mch->above_4g_mem_size);
+    pci_hole64_size = range_size(mch->pci_info.w64);
     memory_region_init_alias(&mch->pci_hole_64bit, OBJECT(mch), "pci-hole64",
                              mch->pci_address_space,
-                             0x100000000ULL + mch->above_4g_mem_size,
+                             mch->pci_info.w64.begin,
                              pci_hole64_size);
     if (pci_hole64_size) {
         memory_region_add_subregion(mch->system_memory,
-                                    0x100000000ULL + mch->above_4g_mem_size,
+                                    mch->pci_info.w64.begin,
                                     &mch->pci_hole_64bit);
     }
     /* smram */
