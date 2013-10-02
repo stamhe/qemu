@@ -63,9 +63,24 @@ typedef struct DimmDeviceClass {
 /**
  * DimmBus:
  * @parent_obj: opaque parent object container
+ * @base: address from which to start mapping @DimmDevice
+ * @as: hot-plugabble memory area where @DimmDevice-s are attached
  */
 typedef struct DimmBus {
     BusState parent_obj;
+    hwaddr base;
+    MemoryRegion as;
 } DimmBus;
+
+/**
+ * DimmBusClass:
+ * @parent_class: opaque parent class container
+ * @register_memory: map @DimmDevice into hot-plugable address space
+ */
+typedef struct DimmBusClass {
+    BusClass parent_class;
+
+    void (*register_memory)(DimmBus *bus, DimmDevice *dimm, Error **errp);
+} DimmBusClass;
 
 #endif
