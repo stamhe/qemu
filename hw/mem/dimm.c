@@ -28,12 +28,21 @@ static void dimm_bus_initfn(Object *obj)
 
     b->allow_hotplug = true;
 }
+static void dimm_bus_register_memory(DimmBus *bus, DimmDevice *dimm,
+                                     Error **errp)
+{
+    memory_region_add_subregion(&bus->as, dimm->start - bus->base, dimm->mr);
+    vmstate_register_ram(dimm->mr, DEVICE(dimm));
+}
+
 static void dimm_bus_class_init(ObjectClass *oc, void *data)
 {
     BusClass *bc = BUS_CLASS(oc);
+    DimmBusClass *dbc = DIMM_BUS_CLASS(oc);
     QemuOpts *opts = qemu_opts_find(qemu_find_opts("memory-opts"), NULL);
 
     bc->max_dev = qemu_opt_get_number(opts, "slots", 0);
+    dbc->register_memory = dimm_bus_register_memory;
 }
 
 static const TypeInfo dimm_bus_info = {
@@ -42,6 +51,7 @@ static const TypeInfo dimm_bus_info = {
     .instance_init = dimm_bus_initfn,
     .instance_size = sizeof(DimmBus),
     .class_init = dimm_bus_class_init,
+    .class_size = sizeof(DimmBusClass),
 };
 
 static Property dimm_properties[] = {
@@ -121,6 +131,7 @@ static void dimm_realize(DeviceState *dev, Error **errp)
     DimmDevice *dimm = DIMM(dev);
     DimmBus *bus = DIMM_BUS(qdev_get_parent_bus(dev));
     BusClass *bc = BUS_GET_CLASS(bus);
+    DimmBusClass *dbc = DIMM_BUS_GET_CLASS(bus);
 
     if (!dimm->mr) {
         error_setg(errp, "'memdev' property is not set");
@@ -137,6 +148,8 @@ static void dimm_realize(DeviceState *dev, Error **errp)
         return;
     }
 
+    g_assert(dbc->register_memory);
+    dbc->register_memory(bus, dimm, errp);
 }
 
 static void dimm_finalize(Object *obj)
