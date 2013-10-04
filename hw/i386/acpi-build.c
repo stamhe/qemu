@@ -1038,15 +1038,22 @@ build_hpet(GArray *table_data, GArray *linker)
                  (void *)hpet, ACPI_HPET_SIGNATURE, sizeof(*hpet), 1);
 }
 
+typedef enum {
+    NOFLAGS_MEM       = 0,
+    ENABLED_MEM       = (1 << 0),
+    HOT_PLUGGABLE_MEM = (1 << 1),
+    NON_VOLATILE_MEM  = (1 << 2),
+} MemoryAffinityFlags;
+
 static void
-acpi_build_srat_memory(AcpiSratMemoryAffinity *numamem,
-                       uint64_t base, uint64_t len, int node, int enabled)
+acpi_build_srat_memory(AcpiSratMemoryAffinity *numamem, uint64_t base,
+                       uint64_t len, int node, MemoryAffinityFlags flags)
 {
     numamem->type = ACPI_SRAT_MEMORY;
     numamem->length = sizeof(*numamem);
     memset(numamem->proximity, 0, 4);
     numamem->proximity[0] = node;
-    numamem->flags = cpu_to_le32(!!enabled);
+    numamem->flags = cpu_to_le32(flags);
     numamem->base_addr = cpu_to_le64(base);
     numamem->range_length = cpu_to_le64(len);
 }
@@ -1094,7 +1101,7 @@ build_srat(GArray *table_data, GArray *linker,
     numa_start = table_data->len;
 
     numamem = acpi_data_push(table_data, sizeof *numamem);
-    acpi_build_srat_memory(numamem, 0, 640*1024, 0, 1);
+    acpi_build_srat_memory(numamem, 0, 640*1024, 0, ENABLED_MEM);
     next_base = 1024 * 1024;
     for (i = 1; i < guest_info->numa_nodes + 1; ++i) {
         mem_base = next_base;
@@ -1110,19 +1117,20 @@ build_srat(GArray *table_data, GArray *linker,
             mem_len -= next_base - guest_info->ram_size;
             if (mem_len > 0) {
                 numamem = acpi_data_push(table_data, sizeof *numamem);
-                acpi_build_srat_memory(numamem, mem_base, mem_len, i-1, 1);
+                acpi_build_srat_memory(numamem, mem_base, mem_len, i-1,
+                                       ENABLED_MEM);
             }
             mem_base = 1ULL << 32;
             mem_len = next_base - guest_info->ram_size;
             next_base += (1ULL << 32) - guest_info->ram_size;
         }
         numamem = acpi_data_push(table_data, sizeof *numamem);
-        acpi_build_srat_memory(numamem, mem_base, mem_len, i - 1, 1);
+        acpi_build_srat_memory(numamem, mem_base, mem_len, i - 1, ENABLED_MEM);
     }
     slots = (table_data->len - numa_start) / sizeof *numamem;
     for (; slots < guest_info->numa_nodes + 2; slots++) {
         numamem = acpi_data_push(table_data, sizeof *numamem);
-        acpi_build_srat_memory(numamem, 0, 0, 0, 0);
+        acpi_build_srat_memory(numamem, 0, 0, 0, NOFLAGS_MEM);
     }
 
     build_header(linker, table_data,
