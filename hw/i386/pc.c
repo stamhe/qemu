@@ -1154,6 +1154,7 @@ FWCfgState *pc_memory_init(MemoryRegion *system_memory,
     MemoryRegion *ram, *option_rom_mr;
     MemoryRegion *ram_below_4g, *ram_above_4g;
     FWCfgState *fw_cfg;
+    QemuOpts *opts = qemu_opts_find(qemu_find_opts("memory-opts"), NULL);
 
     linux_boot = (kernel_filename != NULL);
 
@@ -1200,6 +1201,20 @@ FWCfgState *pc_memory_init(MemoryRegion *system_memory,
     for (i = 0; i < nb_option_roms; i++) {
         rom_add_option(option_rom[i].name, option_rom[i].bootindex);
     }
+
+    if (opts) {
+        ram_addr_t maxmem = qemu_opt_get_size(opts, "maxmem", 0);
+        uint64_t ram_size = below_4g_mem_size + above_4g_mem_size;
+        if (maxmem > ram_size) {
+            uint64_t *ram_end = g_malloc(sizeof(*ram_end));
+            *ram_end = cpu_to_le64(ROUND_UP(0x100000000ULL + maxmem -
+                                            below_4g_mem_size,
+                                            0x1ULL << 30));
+            fprintf(stderr, "ram-end: %llx\n", *ram_end);
+            fw_cfg_add_file(fw_cfg, "etc/ram-end", ram_end, sizeof(*ram_end));
+        }
+    }
+
     guest_info->fw_cfg = fw_cfg;
     return fw_cfg;
 }
