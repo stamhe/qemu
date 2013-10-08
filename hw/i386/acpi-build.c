@@ -866,6 +866,10 @@ build_srat(GArray *table_data, GArray *linker,
     int srat_start, numa_start, slots;
     uint64_t mem_len, mem_base, next_base;
 
+    QemuOpts *opts = qemu_opts_find(qemu_find_opts("memory-opts"), NULL);
+    uint64_t ram_size = opts ? qemu_opt_get_number(opts, "mem", 0) : 0;
+    assert(ram_size);
+
     srat_start = table_data->len;
 
     srat = acpi_data_push(table_data, sizeof *srat);
@@ -907,17 +911,17 @@ build_srat(GArray *table_data, GArray *linker,
         next_base = mem_base + mem_len;
 
         /* Cut out the ACPI_PCI hole */
-        if (mem_base <= guest_info->ram_size &&
-            next_base > guest_info->ram_size) {
-            mem_len -= next_base - guest_info->ram_size;
+        if (mem_base <= ram_size &&
+            next_base > ram_size) {
+            mem_len -= next_base - ram_size;
             if (mem_len > 0) {
                 numamem = acpi_data_push(table_data, sizeof *numamem);
                 acpi_build_srat_memory(numamem, mem_base, mem_len, i-1,
                                        ENABLED_MEM);
             }
             mem_base = 1ULL << 32;
-            mem_len = next_base - guest_info->ram_size;
-            next_base += (1ULL << 32) - guest_info->ram_size;
+            mem_len = next_base - ram_size;
+            next_base += (1ULL << 32) - ram_size;
         }
         numamem = acpi_data_push(table_data, sizeof *numamem);
         acpi_build_srat_memory(numamem, mem_base, mem_len, i - 1, ENABLED_MEM);
@@ -1050,7 +1054,7 @@ struct AcpiBuildState {
     uint32_t table_size;
     /* Is table patched? */
     uint8_t patched;
-    PcGuestInfo *guest_info;
+    PcGuestInfo *(*guest_info_cb)(void);
 } AcpiBuildState;
 
 static bool acpi_get_mcfg(AcpiMcfgInfo *mcfg)
@@ -1160,6 +1164,7 @@ static void acpi_build_update(void *build_opaque, uint32_t offset)
 {
     AcpiBuildState *build_state = build_opaque;
     AcpiBuildTables tables;
+    PcGuestInfo *guest_info;
 
     /* No state to update or already patched? Nothing to do. */
     if (!build_state || build_state->patched) {
@@ -1169,7 +1174,8 @@ static void acpi_build_update(void *build_opaque, uint32_t offset)
 
     acpi_build_tables_init(&tables);
 
-    acpi_build(build_state->guest_info, &tables);
+    guest_info = build_state->guest_info_cb();
+    acpi_build(guest_info, &tables);
 
     assert(acpi_data_len(tables.table_data) == build_state->table_size);
     memcpy(build_state->table_ram, tables.table_data->data,
@@ -1202,10 +1208,11 @@ static const VMStateDescription vmstate_acpi_build = {
     },
 };
 
-void acpi_setup(PcGuestInfo *guest_info)
+void acpi_setup(PcGuestInfo *(guest_info_cb)(void))
 {
     AcpiBuildTables tables;
     AcpiBuildState *build_state;
+    PcGuestInfo *guest_info = guest_info_cb();
 
     if (!guest_info->fw_cfg) {
         ACPI_BUILD_DPRINTF(3, "No fw cfg. Bailing out.\n");
@@ -1219,10 +1226,10 @@ void acpi_setup(PcGuestInfo *guest_info)
 
     build_state = g_malloc0(sizeof *build_state);
 
-    build_state->guest_info = guest_info;
+    build_state->guest_info_cb = guest_info_cb;
 
     acpi_build_tables_init(&tables);
-    acpi_build(build_state->guest_info, &tables);
+    acpi_build(guest_info, &tables);
 
     /* Now expose it all to Guest */
     build_state->table_ram = acpi_add_rom_blob(build_state, tables.table_data,
