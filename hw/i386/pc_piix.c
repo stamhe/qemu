@@ -153,7 +153,7 @@ static void pc_init1(QEMUMachineInitArgs *args,
                               below_4g_mem_size,
                               0x100000000ULL - below_4g_mem_size,
                               above_4g_mem_size,
-                              pci_memory, ram_memory);
+                              pci_memory, ram_memory, fw_cfg);
     } else {
         pci_bus = NULL;
         i440fx_state = NULL;

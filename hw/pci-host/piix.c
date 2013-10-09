@@ -34,6 +34,7 @@
 #include "sysemu/sysemu.h"
 #include "hw/i386/ioapic.h"
 #include "qapi/visitor.h"
+#include "hw/mem-hotplug/dimm.h"
 
 /*
  * I440FX chipset data sheet.
@@ -107,6 +108,8 @@ struct PCII440FXState {
     PAMMemoryRegion pam_regions[13];
     MemoryRegion smram_region;
     uint8_t smm_enabled;
+    DimmBus hp_ram_bus_low;
+    DimmBus hp_ram_bus_high;
 };
 
 
@@ -303,6 +306,11 @@ static int i440fx_initfn(PCIDevice *dev)
     dev->config[I440FX_SMRAM] = 0x02;
 
     cpu_smm_register(&i440fx_set_smm, d);
+
+    qbus_create_inplace(&d->hp_ram_bus_low, sizeof(d->hp_ram_bus_low),
+                        TYPE_DIMM_BUS, DEVICE(d), "hotplug-membus-low");
+    qbus_create_inplace(&d->hp_ram_bus_high, sizeof(d->hp_ram_bus_high),
+                        TYPE_DIMM_BUS, DEVICE(d), "hotplug-membus-high");
     return 0;
 }
 
@@ -316,7 +324,8 @@ PCIBus *i440fx_init(PCII440FXState **pi440fx_state,
                     hwaddr pci_hole_size,
                     ram_addr_t above_4g_mem_size,
                     MemoryRegion *pci_address_space,
-                    MemoryRegion *ram_memory)
+                    MemoryRegion *ram_memory,
+                    FWCfgState *fw_cfg)
 {
     DeviceState *dev;
     PCIBus *b;
@@ -352,6 +361,12 @@ PCIBus *i440fx_init(PCII440FXState **pi440fx_state,
         i440fx->pci_info.w32.begin = 0xc0000000;
     } else {
         i440fx->pci_info.w32.begin = 0xe0000000;
+    }
+
+    if (fw_cfg) {
+        pc_hotplug_memory_init(fw_cfg, pci_hole_start, above_4g_mem_size,
+                               i440fx->pci_info.w32.begin, OBJECT(f),
+                               &f->hp_ram_bus_low.as, &f->hp_ram_bus_high.as);
     }
 
     memory_region_init_alias(&f->pci_hole, OBJECT(d), "pci-hole", f->pci_address_space,

@@ -139,6 +139,14 @@ static inline uint64_t pci_host_get_hole64_size(uint64_t pci_hole64_size)
 void pc_init_pci64_hole(PcPciInfo *pci_info, uint64_t pci_hole64_start,
                         uint64_t pci_hole64_size);
 
+void pc_hotplug_memory_init(FWCfgState *fw_cfg,
+                       ram_addr_t below_4g_mem_size,
+                       ram_addr_t above_4g_mem_size,
+                       ram_addr_t pci_hole_start,
+                       Object *system_memory,
+                       MemoryRegion *low_hp_memory,
+                       MemoryRegion *high_hp_memory);
+
 FWCfgState *pc_memory_init(MemoryRegion *system_memory,
                            const char *kernel_filename,
                            const char *kernel_cmdline,
@@ -190,7 +198,8 @@ PCIBus *i440fx_init(PCII440FXState **pi440fx_state, int *piix_devfn,
                     hwaddr pci_hole_size,
                     ram_addr_t above_4g_mem_size,
                     MemoryRegion *pci_memory,
-                    MemoryRegion *ram_memory);
+                    MemoryRegion *ram_memory,
+                    FWCfgState *fw_cfg);
 
 PCIBus *find_i440fx(void);
 /* piix4.c */
