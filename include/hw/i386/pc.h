@@ -154,6 +154,17 @@ void pc_acpi_dev_memory_hotplug_init(DimmBus *hotplug_mem_bus,
                                      hotplug_fn hotplug,
                                      Object *acpi_dev);
 
+typedef void (*pc_hotplug_memory_init_fn)(Object *owner, ram_addr_t ram_size,
+                                  MemoryRegion *system_memory,
+                                  DimmBus *hotplug_mem_bus,
+                                  ram_addr_t *high_mem_end);
+extern pc_hotplug_memory_init_fn pc_hotplug_memory_init;
+
+void pc_hotplug_memory_init_no_support(Object *owner, ram_addr_t ram_size,
+                                       MemoryRegion *system_memory,
+                                       DimmBus *hotplug_mem_bus,
+                                       ram_addr_t *high_mem_end);
+
 qemu_irq *pc_allocate_cpu_irq(void);
 DeviceState *pc_vga_init(ISABus *isa_bus, PCIBus *pci_bus);
 void pc_basic_device_init(ISABus *isa_bus, qemu_irq *gsi,
