@@ -1236,6 +1236,58 @@ void pc_acpi_dev_memory_hotplug_init(DimmBus *hotplug_mem_bus,
     }
 }
 
+static
+void pc_hotplug_memory_init_impl(Object *owner,
+                                 MemoryRegion *system_memory,
+                                 ram_addr_t low_hotplug_mem_start,
+                                 ram_addr_t low_hotplug_mem_end,
+                                 DimmBus *hotplug_mem_bus,
+                                 ram_addr_t *high_mem_end)
+{
+    QemuOpts *opts = qemu_opts_find(qemu_find_opts("memory-opts"), NULL);
+    ram_addr_t ram_size = qemu_opt_get_size(opts, "mem", 0);
+    ram_addr_t maxmem = qemu_opt_get_size(opts, "maxmem", 0);
+    ram_addr_t hotplug_mem_size;
+
+    if (maxmem <= ram_size) {
+        /* Disable ACPI migration code and creation of memory devices in SSDT */
+        qemu_opt_set_number(opts, "slots", 0);
+        return;
+    }
+
+    hotplug_mem_size = maxmem - ram_size;
+    if (hotplug_mem_size <= (low_hotplug_mem_end - low_hotplug_mem_start)) {
+        hotplug_mem_bus->base = low_hotplug_mem_start;
+    } else {
+        hotplug_mem_bus->base = ROUND_UP(*high_mem_end, 1ULL << 30);
+        *high_mem_end = hotplug_mem_bus->base + hotplug_mem_size;
+    }
+
+    memory_region_init(&hotplug_mem_bus->as, owner, "hotplug-memory",
+                       hotplug_mem_size);
+    memory_region_add_subregion(system_memory, hotplug_mem_bus->base,
+                                &hotplug_mem_bus->as);
+}
+
+pc_hotplug_memory_init_fn pc_hotplug_memory_init = pc_hotplug_memory_init_impl;
+
+void pc_hotplug_memory_init_compat_1_7(Object *owner,
+                                       MemoryRegion *system_memory,
+                                       ram_addr_t low_hotplug_mem_start,
+                                       ram_addr_t low_hotplug_mem_end,
+                                       DimmBus *hotplug_mem_bus,
+                                       ram_addr_t *high_mem_end)
+{
+    QemuOpts *opts = qemu_opts_find(qemu_find_opts("memory-opts"), NULL);
+    /*
+     * clearing slots tells acpi code that memory hotplug is disabled,
+     * so there is not need to migrate its state and create related
+     * SSDT table objects
+     */
+    qemu_opt_set_number(opts, "slots", 0);
+}
+
+
 qemu_irq *pc_allocate_cpu_irq(void)
 {
     return qemu_allocate_irqs(pic_irq_request, NULL, 1);

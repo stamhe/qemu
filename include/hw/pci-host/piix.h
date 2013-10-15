@@ -6,6 +6,7 @@
 #include "hw/pci/pci.h"
 #include "hw/pci/pci_host.h"
 #include "hw/pci-host/pam.h"
+#include "hw/mem/dimm.h"
 
 #define TYPE_I440FX_PCI_DEVICE "i440FX"
 #define I440FX_PCI_DEVICE(obj) \
@@ -22,6 +23,7 @@ struct PCII440FXState {
     PAMMemoryRegion pam_regions[13];
     MemoryRegion smram_region;
     uint8_t smm_enabled;
+    DimmBus hotplug_mem_bus;
 };
 
 #endif

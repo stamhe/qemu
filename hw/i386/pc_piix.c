@@ -48,6 +48,8 @@
 #include "exec/address-spaces.h"
 #include "hw/acpi/acpi.h"
 #include "cpu.h"
+#include "hw/acpi/piix4.h"
+#include "hw/pci-host/piix.h"
 #ifdef CONFIG_XEN
 #  include <xen/hvm/hvm_info_table.h>
 #endif
@@ -230,6 +232,8 @@ static void pc_init1(QEMUMachineInitArgs *args,
                               gsi[9], *smi_irq,
                               kvm_enabled(), fw_cfg);
         smbus_eeprom_init(smbus, 8, NULL, 0);
+        pc_acpi_dev_memory_hotplug_init(&i440fx_state->hotplug_mem_bus,
+                                        piix4_mem_hotplug, piix4_pm_find());
     }
 
     if (pci_enabled) {
@@ -250,6 +254,7 @@ static void pc_compat_1_7(QEMUMachineInitArgs *args)
 {
     smbios_type1_defaults = false;
     pc_pci_as_mapping_init = pc_pci_as_mapping_init_1_7;
+    pc_hotplug_memory_init = pc_hotplug_memory_init_compat_1_7;
 }
 
 static void pc_compat_1_6(QEMUMachineInitArgs *args)
@@ -366,7 +371,6 @@ static void pc_xen_hvm_init(QEMUMachineInitArgs *args)
     PC_DEFAULT_MACHINE_OPTIONS, \
     .desc = "Standard PC (i440FX + PIIX, 1996)", \
     .hot_add_cpu = pc_hot_add_cpu
-
 
 #define PC_I440FX_1_8_MACHINE_OPTIONS PC_I440FX_MACHINE_OPTIONS
 static QEMUMachine pc_i440fx_machine_v1_8 = {
