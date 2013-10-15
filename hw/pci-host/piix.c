@@ -281,6 +281,11 @@ static int i440fx_initfn(PCIDevice *dev)
     dev->config[I440FX_SMRAM] = 0x02;
 
     cpu_smm_register(&i440fx_set_smm, d);
+
+    qbus_create_inplace(&d->hotplug_mem_bus,
+                        sizeof(d->hotplug_mem_bus),
+                        TYPE_DIMM_BUS, DEVICE(d),
+                        "hotplug-membus");
     return 0;
 }
 
@@ -302,6 +307,8 @@ PCIBus *i440fx_init(PCII440FXState **pi440fx_state,
     PCII440FXState *f;
     unsigned i;
     I440FXState *i440fx;
+    ram_addr_t below_4g_mem_size = ram_size - above_4g_mem_size;
+    ram_addr_t high_memory_end = 0x100000000ULL + above_4g_mem_size;
 
     dev = qdev_create(NULL, TYPE_I440FX_PCI_HOST_BRIDGE);
     s = PCI_HOST_BRIDGE(dev);
@@ -329,10 +336,14 @@ PCIBus *i440fx_init(PCII440FXState **pi440fx_state,
         i440fx->pci_info.w32.begin = 0xe0000000;
     }
 
+    pc_hotplug_memory_init(OBJECT(f), f->system_memory,
+                           below_4g_mem_size, i440fx->pci_info.w32.begin,
+                           &f->hotplug_mem_bus, &high_memory_end);
+
     /* setup pci memory mapping */
     pc_pci_as_mapping_init(OBJECT(f), f->system_memory,
                            f->pci_address_space,
-                           0x100000000ULL + above_4g_mem_size);
+                           high_memory_end);
 
     memory_region_init_alias(&f->smram_region, OBJECT(d), "smram-region",
                              f->pci_address_space, 0xa0000, 0x20000);
