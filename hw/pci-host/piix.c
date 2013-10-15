@@ -351,7 +351,8 @@ PCIBus *i440fx_init(PCII440FXState **pi440fx_state,
 
     /* setup pci memory mapping */
     pc_pci_as_mapping_init(OBJECT(f), f->system_memory,
-                           f->pci_address_space);
+                           f->pci_address_space,
+                           0x100000000ULL + above_4g_mem_size);
 
     memory_region_init_alias(&f->smram_region, OBJECT(d), "smram-region",
                              f->pci_address_space, 0xa0000, 0x20000);
