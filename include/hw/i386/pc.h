@@ -129,8 +129,15 @@ PcGuestInfo *pc_guest_info_init(ram_addr_t below_4g_mem_size,
 #define DEFAULT_PCI_HOLE64_SIZE (~0x0ULL)
 
 
-void pc_pci_as_mapping_init(Object *owner, MemoryRegion *system_memory,
-                            MemoryRegion *pci_address_space);
+typedef
+void (*pc_pci_as_mapping_init_fn)(Object *owner, MemoryRegion *system_memory,
+                                  MemoryRegion *pci_address_space,
+                                  uint64_t reserved_memory_end);
+extern pc_pci_as_mapping_init_fn pc_pci_as_mapping_init;
+
+void pc_pci_as_mapping_init_1_7(Object *owner, MemoryRegion *system_memory,
+                                MemoryRegion *pci_address_space,
+                                uint64_t reserved_memory_end);
 
 FWCfgState *pc_memory_init(MemoryRegion *system_memory,
                            const char *kernel_filename,

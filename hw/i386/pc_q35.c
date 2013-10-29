@@ -224,6 +224,7 @@ static void pc_q35_init(QEMUMachineInitArgs *args)
 
 static void pc_compat_1_7(QEMUMachineInitArgs *args)
 {
+    pc_pci_as_mapping_init = pc_pci_as_mapping_init_1_7;
 }
 
 static void pc_compat_1_6(QEMUMachineInitArgs *args)
