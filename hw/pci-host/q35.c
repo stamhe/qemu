@@ -359,7 +359,8 @@ static int mch_init(PCIDevice *d)
 
     /* setup pci memory mapping */
     pc_pci_as_mapping_init(OBJECT(mch), mch->system_memory,
-                           mch->pci_address_space);
+                           mch->pci_address_space,
+                           0x100000000ULL + mch->above_4g_mem_size);
 
     /* smram */
     cpu_smm_register(&mch_set_smm, mch);
