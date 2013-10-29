@@ -1094,13 +1094,36 @@ PcGuestInfo *pc_guest_info_init(ram_addr_t below_4g_mem_size,
 }
 
 /* setup pci memory address space mapping into system address space */
-void pc_pci_as_mapping_init(Object *owner, MemoryRegion *system_memory,
-                            MemoryRegion *pci_address_space)
+void pc_pci_as_mapping_init_1_7(Object *owner, MemoryRegion *system_memory,
+                                MemoryRegion *pci_address_space,
+                                uint64_t reserved_memory_end)
 {
     /* Set to lower priority than RAM */
     memory_region_add_subregion_overlap(system_memory, 0x0,
                                         pci_address_space, -1);
 }
+
+static
+void pc_pci_as_mapping_init_1_8(Object *owner, MemoryRegion *system_memory,
+                                MemoryRegion *pci_address_space,
+                                uint64_t reserved_memory_end)
+{
+    uint64_t *val;
+    FWCfgState *fw_cfg = fw_cfg_find();
+    g_assert(fw_cfg);
+    /*
+     *  Align address at 1G, this makes sure it can be exactly covered
+     *  with a PAT entry even when using huge pages.
+     */
+    val = g_malloc(sizeof(*val));
+    *val = cpu_to_le64(ROUND_UP(reserved_memory_end, 0x1ULL << 30));
+    fw_cfg_add_file(fw_cfg, "etc/reserved-memory-end", val, sizeof(*val));
+
+    pc_pci_as_mapping_init_1_7(owner, system_memory, pci_address_space,
+                               reserved_memory_end);
+}
+
+pc_pci_as_mapping_init_fn pc_pci_as_mapping_init = pc_pci_as_mapping_init_1_8;
 
 void pc_acpi_init(const char *default_dsdt)
 {
