@@ -22,15 +22,13 @@
  * THE SOFTWARE.
  */
 
+#include "hw/pci-host/piix.h"
 #include "hw/hw.h"
 #include "hw/i386/pc.h"
-#include "hw/pci/pci.h"
-#include "hw/pci/pci_host.h"
 #include "hw/isa/isa.h"
 #include "hw/sysbus.h"
 #include "qemu/range.h"
 #include "hw/xen/xen.h"
-#include "hw/pci-host/pam.h"
 #include "sysemu/sysemu.h"
 #include "hw/i386/ioapic.h"
 #include "qapi/visitor.h"
@@ -89,24 +87,6 @@ typedef struct PIIX3State {
     /* IO memory region for Reset Control Register (RCR_IOPORT) */
     MemoryRegion rcr_mem;
 } PIIX3State;
-
-#define TYPE_I440FX_PCI_DEVICE "i440FX"
-#define I440FX_PCI_DEVICE(obj) \
-    OBJECT_CHECK(PCII440FXState, (obj), TYPE_I440FX_PCI_DEVICE)
-
-struct PCII440FXState {
-    /*< private >*/
-    PCIDevice parent_obj;
-    /*< public >*/
-
-    MemoryRegion *system_memory;
-    MemoryRegion *pci_address_space;
-    MemoryRegion *ram_memory;
-    PAMMemoryRegion pam_regions[13];
-    MemoryRegion smram_region;
-    uint8_t smm_enabled;
-};
-
 
 #define I440FX_PAM      0x59
 #define I440FX_PAM_SIZE 7
