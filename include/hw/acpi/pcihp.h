@@ -53,7 +53,7 @@ void acpi_pcihp_init(AcpiPciHpState *, PCIBus *root,
 
 /* Invoke on device hotplug */
 int acpi_pcihp_device_hotplug(AcpiPciHpState *, PCIDevice *,
-                              PCIHotplugState state);
+                              HotplugState state);
 
 /* Called on reset */
 void acpi_pcihp_reset(AcpiPciHpState *s);

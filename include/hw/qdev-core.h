@@ -307,4 +307,13 @@ extern int qdev_hotplug;
 
 char *qdev_get_dev_path(DeviceState *dev);
 
+typedef enum {
+    HOTPLUG_DISABLED,
+    HOTPLUG_ENABLED,
+    COLDPLUG_ENABLED,
+} HotplugState;
+
+typedef int (*hotplug_fn)(DeviceState *hotplug_dev, DeviceState *dev,
+                          HotplugState state);
+
 #endif
