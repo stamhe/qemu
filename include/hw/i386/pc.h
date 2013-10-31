@@ -12,6 +12,7 @@
 #include "qemu/bitmap.h"
 #include "sysemu/sysemu.h"
 #include "hw/pci/pci.h"
+#include "hw/mem/dimm.h"
 
 /* PC-style peripherals (also used by other machines).  */
 
@@ -148,6 +149,11 @@ FWCfgState *pc_memory_init(MemoryRegion *system_memory,
                            MemoryRegion *rom_memory,
                            MemoryRegion **ram_memory,
                            PcGuestInfo *guest_info);
+
+void pc_acpi_dev_memory_hotplug_init(DimmBus *hotplug_mem_bus,
+                                     hotplug_fn hotplug,
+                                     Object *acpi_dev);
+
 qemu_irq *pc_allocate_cpu_irq(void);
 DeviceState *pc_vga_init(ISABus *isa_bus, PCIBus *pci_bus);
 void pc_basic_device_init(ISABus *isa_bus, qemu_irq *gsi,
