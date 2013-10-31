@@ -278,6 +278,10 @@ static void dimm_realize(DeviceState *dev, Error **errp)
 
     g_assert(dbc->register_memory);
     dbc->register_memory(bus, dimm, errp);
+
+    if (bus->hotplug) {
+        bus->hotplug(bus->hotplug_dev, dev, HOTPLUG_ENABLED);
+    }
 }
 
 static void dimm_finalize(Object *obj)
