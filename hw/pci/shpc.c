@@ -491,9 +491,10 @@ static const MemoryRegionOps shpc_mmio_ops = {
     },
 };
 
-static int shpc_device_hotplug(DeviceState *qdev, PCIDevice *affected_dev,
-                               PCIHotplugState hotplug_state)
+static int shpc_device_hotplug(DeviceState *qdev, DeviceState *dev,
+                               HotplugState hotplug_state)
 {
+    PCIDevice *affected_dev = PCI_DEVICE(dev);
     int pci_slot = PCI_SLOT(affected_dev->devfn);
     uint8_t state;
     uint8_t led;
@@ -510,13 +511,13 @@ static int shpc_device_hotplug(DeviceState *qdev, PCIDevice *affected_dev,
     /* Don't send event when device is enabled during qemu machine creation:
      * it is present on boot, no hotplug event is necessary. We do send an
      * event when the device is disabled later. */
-    if (hotplug_state == PCI_COLDPLUG_ENABLED) {
+    if (hotplug_state == COLDPLUG_ENABLED) {
         shpc_set_status(shpc, slot, 0, SHPC_SLOT_STATUS_MRL_OPEN);
         shpc_set_status(shpc, slot, SHPC_SLOT_STATUS_PRSNT_7_5W,
                         SHPC_SLOT_STATUS_PRSNT_MASK);
         return 0;
     }
-    if (hotplug_state == PCI_HOTPLUG_DISABLED) {
+    if (hotplug_state == HOTPLUG_DISABLED) {
         shpc->config[SHPC_SLOT_EVENT_LATCH(slot)] |= SHPC_SLOT_EVENT_BUTTON;
         state = shpc_get_status(shpc, slot, SHPC_SLOT_STATE_MASK);
         led = shpc_get_status(shpc, slot, SHPC_SLOT_PWR_LED_MASK);

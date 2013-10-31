@@ -704,8 +704,8 @@ static void piix4_cpu_added_req(Notifier *n, void *opaque)
     piix4_cpu_hotplug_req(s, CPU(opaque), PLUG);
 }
 
-static int piix4_device_hotplug(DeviceState *qdev, PCIDevice *dev,
-                                PCIHotplugState state);
+static int piix4_device_hotplug(DeviceState *qdev, DeviceState *dev,
+                                HotplugState state);
 
 static void piix4_acpi_system_hot_add_init(MemoryRegion *parent,
                                            PCIBus *bus, PIIX4PMState *s)
@@ -748,21 +748,22 @@ static void disable_device(PIIX4PMState *s, int slot)
     s->pci0_status.down |= (1U << slot);
 }
 
-static int piix4_device_hotplug(DeviceState *qdev, PCIDevice *dev,
-				PCIHotplugState state)
+static int piix4_device_hotplug(DeviceState *qdev, DeviceState *dev,
+                                HotplugState state)
 {
-    int slot = PCI_SLOT(dev->devfn);
+    PCIDevice *d = PCI_DEVICE(dev);
+    int slot = PCI_SLOT(d->devfn);
     PIIX4PMState *s = PIIX4_PM(qdev);
 
     /* Don't send event when device is enabled during qemu machine creation:
      * it is present on boot, no hotplug event is necessary. We do send an
      * event when the device is disabled later. */
-    if (state == PCI_COLDPLUG_ENABLED) {
+    if (state == COLDPLUG_ENABLED) {
         s->pci0_slot_device_present |= (1U << slot);
         return 0;
     }
 
-    if (state == PCI_HOTPLUG_ENABLED) {
+    if (state == HOTPLUG_ENABLED) {
         enable_device(s, slot);
     } else {
         disable_device(s, slot);
