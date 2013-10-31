@@ -1225,6 +1225,17 @@ FWCfgState *pc_memory_init(MemoryRegion *system_memory,
     return fw_cfg;
 }
 
+void pc_acpi_dev_memory_hotplug_init(DimmBus *hotplug_mem_bus,
+                                     hotplug_fn hotplug,
+                                     Object *acpi_dev)
+{
+    g_assert(acpi_dev);
+    if (memory_region_size(&hotplug_mem_bus->as)) {
+        hotplug_mem_bus->hotplug_dev = DEVICE(acpi_dev);
+        hotplug_mem_bus->hotplug = hotplug;
+    }
+}
+
 qemu_irq *pc_allocate_cpu_irq(void)
 {
     return qemu_allocate_irqs(pic_irq_request, NULL, 1);

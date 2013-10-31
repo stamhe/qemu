@@ -65,11 +65,15 @@ typedef struct DimmDeviceClass {
  * @parent_obj: opaque parent object container
  * @base: address from which to start mapping @DimmDevice
  * @as: hot-plugabble memory area where @DimmDevice-s are attached
+ * @hotplug_dev: device that hotplugs realized DimmDevice
+ * @hotplug: hotplug callback set by the board
  */
 typedef struct DimmBus {
     BusState parent_obj;
     hwaddr base;
     MemoryRegion as;
+    DeviceState *hotplug_dev;
+    hotplug_fn hotplug;
 } DimmBus;
 
 /**
