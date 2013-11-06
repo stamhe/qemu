@@ -2838,6 +2838,17 @@ static int object_create(QemuOpts *opts, void *opaque)
     return 0;
 }
 
+Object *qemu_get_backend(void)
+{
+    static Object *obj;
+
+    if (obj == NULL) {
+        obj = container_get(object_get_root(), "/backend");
+    }
+
+    return obj;
+}
+
 int main(int argc, char **argv, char **envp)
 {
     int i;
