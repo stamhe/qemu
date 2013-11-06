@@ -1719,3 +1719,16 @@ ETEXI
 STEXI
 @end table
 ETEXI
+
+    {
+        .name       = "memdev-add",
+        .args_type  = "memdev:O",
+        .params     = "id size",
+        .help       = "add host memory",
+        .mhandler.cmd_new = qmp_memdev_add,
+    },
+
+STEXI
+@item memdev-add
+@findex memdev-add
+Add host memory.

@@ -3126,3 +3126,10 @@ HXCOMM This is the last statement. Insert new options before this line!
 STEXI
 @end table
 ETEXI
+
+DEF("memdev", HAS_ARG, QEMU_OPTION_memdev,
+    "-memdev [backend-type,]id=str,size=value\n"
+    "                add host memory\n"
+    "                default backend-type: compat-ram-host-memory\n",
+    QEMU_ARCH_ALL)
+STEXI

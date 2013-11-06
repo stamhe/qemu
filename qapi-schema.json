@@ -4213,3 +4213,21 @@
 # Since: 1.7
 ##
 { 'command': 'blockdev-add', 'data': { 'options': 'BlockdevOptions' } }
+
+##
+# @memdev_add:
+#
+# Add a host memory backend.
+#
+# @id: the name of the new memory backend
+# @size: amount of memory backend should allocate
+# @type: backend type. [default: compat-ram-host-memory]
+#
+# Since: 1.8
+#
+# Returns: Nothing on success
+##
+{ 'command': 'memdev-add',
+  'data': {'id': 'str', 'size': 'size', '*type': 'str'},
+  'gen': 'no'
+}

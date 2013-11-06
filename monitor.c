@@ -67,6 +67,7 @@
 #include "qmp-commands.h"
 #include "hmp.h"
 #include "qemu/thread.h"
+#include "sysemu/hostmem.h"
 
 /* for pic/irq_info */
 #if defined(TARGET_SPARC)
