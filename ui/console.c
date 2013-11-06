@@ -27,6 +27,7 @@
 #include "qemu/timer.h"
 #include "qmp-commands.h"
 #include "sysemu/char.h"
+#include "sysemu/sysemu.h"
 
 //#define DEBUG_CONSOLE
 #define DEFAULT_BACKSCROLL 512
@@ -1598,7 +1599,7 @@ DisplayState *init_displaystate(void)
          * all QemuConsoles are created and the order / numbering
          * doesn't change any more */
         name = g_strdup_printf("console[%d]", i);
-        object_property_add_child(container_get(object_get_root(), "/backend"),
+        object_property_add_child(qemu_get_backend(),
                                   name, OBJECT(consoles[i]), &local_err);
         g_free(name);
     }
