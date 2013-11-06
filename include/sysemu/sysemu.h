@@ -9,6 +9,7 @@
 #include "qapi-types.h"
 #include "qemu/notify.h"
 #include "qemu/main-loop.h"
+#include "qom/object.h"
 
 /* vl.c */
 
@@ -86,6 +87,8 @@ void qemu_savevm_state_complete(QEMUFile *f);
 void qemu_savevm_state_cancel(void);
 uint64_t qemu_savevm_state_pending(QEMUFile *f, uint64_t max_size);
 int qemu_loadvm_state(QEMUFile *f);
+
+Object *qemu_get_backend(void);
 
 /* SLIRP */
 void do_info_slirp(Monitor *mon);

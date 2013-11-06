@@ -2846,6 +2846,17 @@ static void qemu_init_default_mem_opts(uint64_t size)
     qemu_opt_set_number(opts, "slots", 0);
 }
 
+Object *qemu_get_backend(void)
+{
+    static Object *obj;
+
+    if (obj == NULL) {
+        obj = container_get(object_get_root(), "/backend");
+    }
+
+    return obj;
+}
+
 int main(int argc, char **argv, char **envp)
 {
     int i;
