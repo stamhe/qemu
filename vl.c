@@ -170,6 +170,7 @@ int main(int argc, char **argv)
 
 #include "ui/qemu-spice.h"
 #include "qapi/string-input-visitor.h"
+#include "sysemu/hostmem.h"
 
 //#define DEBUG_NET
 //#define DEBUG_SLIRP
@@ -2929,6 +2930,7 @@ int main(int argc, char **argv, char **envp)
     qemu_add_opts(&qemu_realtime_opts);
     qemu_add_opts(&qemu_msg_opts);
     qemu_add_opts(&qemu_mem_opts);
+    qemu_add_opts(&qemu_memdev_opts);
 
     runstate_init();
 
@@ -3859,6 +3861,18 @@ int main(int argc, char **argv, char **envp)
                 }
                 configure_msg(opts);
                 break;
+            case QEMU_OPTION_memdev:
+                {
+                    Error *local_err = NULL;
+                    opts = qemu_opts_parse(qemu_find_opts("memdev"), optarg, 1);
+                    memdev_add(opts, &local_err);
+                    if (error_is_set(&local_err)) {
+                        qerror_report_err(local_err);
+                        error_free(local_err);
+                        exit(1);
+                    }
+                    break;
+                }
             default:
                 os_parse_cmd_args(popt->index, optarg);
             }

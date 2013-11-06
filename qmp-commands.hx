@@ -3291,7 +3291,34 @@ Example (2):
          }
        }
      }
+<- { "return": {} }
 
+EQMP
+
+    {
+        .name       = "memdev-add",
+        .args_type  = "memdev:O",
+        .mhandler.cmd_new = qmp_memdev_add,
+    },
+
+SQMP
+memdev-add
+----------
+
+Add host memory.
+
+Arguments:
+
+- "id": the device's ID, must be unique (json-string)
+- "size": amount of memory backend should allocate (json-int)
+- "type": backend type (json-string, optional), default: compat-ram-host-memory
+
+Example:
+
+-> { "execute": "memdev-add",
+     "arguments": { "id": "memdev1",
+                    "size": "1G",
+                    "type": "compat-ram-host-memory" } }
 <- { "return": {} }
 
 EQMP
