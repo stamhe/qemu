@@ -50,6 +50,7 @@
 
 #include "qapi/qmp/qint.h"
 #include "qom/qom-qobject.h"
+#include "hw/mem/dimm.h"
 
 typedef struct AcpiCpuInfo {
     DECLARE_BITMAP(found_cpus, MAX_CPUMASK_BITS + 1);
@@ -1062,6 +1063,32 @@ acpi_build_srat_memory(AcpiSratMemoryAffinity *numamem, uint64_t base,
     numamem->range_length = cpu_to_le64(len);
 }
 
+typedef struct {
+    AcpiSratMemoryAffinity **numamem;
+    GArray *table_data;
+} AcpiSratHotplugMemoryArg;
+
+static int acpi_add_hotplug_memory_region_entry(Object *obj, void *opaque)
+{
+    AcpiSratHotplugMemoryArg *arg = opaque;
+    DimmBus *bus = (DimmBus *)object_dynamic_cast(obj, TYPE_DIMM_BUS);
+
+    if (bus) {
+        uint64_t size = memory_region_size(&bus->as);
+        if (size) {
+            *arg->numamem = acpi_data_push(arg->table_data,
+                                           sizeof **arg->numamem);
+            acpi_build_srat_memory(*arg->numamem, bus->base, size, 0,
+                                   MEM_AFFINITY_HOT_PLUGGABLE |
+                                   MEM_AFFINITY_ENABLED);
+        }
+    }
+
+    object_child_foreach(obj, acpi_add_hotplug_memory_region_entry,
+                         opaque);
+   return 0;
+}
+
 static void
 build_srat(GArray *table_data, GArray *linker,
            AcpiCpuInfo *cpu, PcGuestInfo *guest_info)
@@ -1136,6 +1163,17 @@ build_srat(GArray *table_data, GArray *linker,
     for (; slots < guest_info->numa_nodes + 2; slots++) {
         numamem = acpi_data_push(table_data, sizeof *numamem);
         acpi_build_srat_memory(numamem, 0, 0, 0, MEM_AFFINITY_NOFLAGS);
+    }
+
+    {
+        /*
+         * Windows requires hotplug memory hole in SRAT,
+         * for OS to be configured for memory hotplug.
+         */
+        AcpiSratHotplugMemoryArg arg = { .numamem = &numamem,
+                                         .table_data = table_data };
+        object_child_foreach(qdev_get_machine(),
+                             acpi_add_hotplug_memory_region_entry, &arg);
     }
 
     build_header(linker, table_data,
