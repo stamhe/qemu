@@ -59,6 +59,7 @@ typedef struct MCHPCIState {
     ram_addr_t above_4g_mem_size;
     uint64_t pci_hole64_size;
     PcGuestInfo *guest_info;
+    DimmBus hotplug_mem_bus;
 } MCHPCIState;
 
 typedef struct Q35PCIHost {

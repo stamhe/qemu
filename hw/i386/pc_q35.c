@@ -159,6 +159,8 @@ static void pc_q35_init(QEMUMachineInitArgs *args)
                  ICH9_LPC_NB_PIRQS);
     pci_bus_set_route_irq_fn(host_bus, ich9_route_intx_pin_to_irq);
     isa_bus = ich9_lpc->isa_bus;
+    pc_acpi_dev_memory_hotplug_init(&q35_host->mch.hotplug_mem_bus,
+                                    ich9_mem_hotplug, OBJECT(ich9_lpc));
 
     /*end early*/
     isa_bus_irqs(isa_bus, gsi);
@@ -225,6 +227,7 @@ static void pc_q35_init(QEMUMachineInitArgs *args)
 static void pc_compat_1_7(QEMUMachineInitArgs *args)
 {
     pc_pci_as_mapping_init = pc_pci_as_mapping_init_1_7;
+    pc_hotplug_memory_init = pc_hotplug_memory_init_compat_1_7;
 }
 
 static void pc_compat_1_6(QEMUMachineInitArgs *args)
