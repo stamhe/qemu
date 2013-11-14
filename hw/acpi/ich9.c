@@ -210,6 +210,10 @@ void ich9_pm_init(PCIDevice *lpc_pci, ICH9LPCPMRegs *pm,
     qemu_register_reset(pm_reset, pm);
     pm->powerdown_notifier.notify = pm_powerdown_req;
     qemu_register_powerdown_notifier(&pm->powerdown_notifier);
+
+    acpi_memory_hotplug_init(OBJECT(lpc_pci), &pm->io_mem, &pm->gpe_mem);
+    memory_region_add_subregion(pci_address_space_io(lpc_pci),
+                                ACPI_MEMORY_HOTPLUG_BASE, &pm->io_mem);
 }
 
 static void ich9_pm_get_gpe0_blk(Object *obj, Visitor *v,
@@ -233,4 +237,15 @@ void ich9_pm_add_properties(Object *obj, ICH9LPCPMRegs *pm, Error **errp)
                         NULL, NULL, pm, NULL);
     object_property_add_uint32_ptr(obj, ACPI_PM_PROP_GPE0_BLK_LEN,
                                    &gpe0_len, errp);
+}
+
+int ich9_mem_hotplug(DeviceState *hotplug_dev, DeviceState *dev,
+                     HotplugState state)
+{
+    ICH9LPCState *lpc = ICH9_LPC_DEVICE(hotplug_dev);
+    ICH9LPCPMRegs *pm = &lpc->pm;
+
+    acpi_memory_hotplug_cb(&pm->acpi_regs, &pm->gpe_mem, dev, state);
+    acpi_update_sci(&pm->acpi_regs, pm->irq, ACPI_MEMORY_HOTPLUG_STATUS);
+    return 0;
 }

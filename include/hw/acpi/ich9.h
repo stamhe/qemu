@@ -34,6 +34,9 @@ typedef struct ICH9LPCPMRegs {
     MemoryRegion io;
     MemoryRegion io_gpe;
     MemoryRegion io_smi;
+    MemoryRegion io_mem;
+
+    MemHotplugState gpe_mem;
 
     uint32_t smi_en;
     uint32_t smi_sts;
@@ -50,5 +53,8 @@ void ich9_pm_iospace_update(ICH9LPCPMRegs *pm, uint32_t pm_io_base);
 extern const VMStateDescription vmstate_ich9_pm;
 
 void ich9_pm_add_properties(Object *obj, ICH9LPCPMRegs *pm, Error **errp);
+
+int ich9_mem_hotplug(DeviceState *hotplug_dev, DeviceState *dev,
+                     HotplugState state);
 
 #endif /* HW_ACPI_ICH9_H */
