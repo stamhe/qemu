@@ -356,11 +356,17 @@ static int mch_init(PCIDevice *d)
 {
     int i;
     MCHPCIState *mch = MCH_PCI_DEVICE(d);
+    ram_addr_t high_memory_end = 0x100000000ULL + mch->above_4g_mem_size;
+
+    pc_hotplug_memory_init(OBJECT(mch),
+		           mch->below_4g_mem_size + mch->above_4g_mem_size,
+			   mch->system_memory,
+                           &mch->hotplug_mem_bus, &high_memory_end);
 
     /* setup pci memory mapping */
     pc_pci_as_mapping_init(OBJECT(mch), mch->system_memory,
                            mch->pci_address_space,
-                           0x100000000ULL + mch->above_4g_mem_size);
+                           high_memory_end);
 
     /* smram */
     cpu_smm_register(&mch_set_smm, mch);
@@ -389,6 +395,16 @@ uint64_t mch_mcfg_base(void)
     return MCH_HOST_BRIDGE_PCIEXBAR_DEFAULT;
 }
 
+static void mch_initfn(Object *obj)
+{
+    MCHPCIState *mch = MCH_PCI_DEVICE(obj);
+
+    qbus_create_inplace(&mch->hotplug_mem_bus,
+                        sizeof(mch->hotplug_mem_bus),
+                        TYPE_DIMM_BUS, DEVICE(mch),
+                        "hotplug-membus");
+}
+
 static void mch_class_init(ObjectClass *klass, void *data)
 {
     PCIDeviceClass *k = PCI_DEVICE_CLASS(klass);
@@ -410,6 +426,7 @@ static const TypeInfo mch_info = {
     .name = TYPE_MCH_PCI_DEVICE,
     .parent = TYPE_PCI_DEVICE,
     .instance_size = sizeof(MCHPCIState),
+    .instance_init = mch_initfn,
     .class_init = mch_class_init,
 };
 

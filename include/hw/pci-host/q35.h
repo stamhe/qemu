@@ -47,6 +47,7 @@ typedef struct MCHPCIState {
     PCIDevice parent_obj;
     /*< public >*/
 
+    DimmBus hotplug_mem_bus;
     MemoryRegion *ram_memory;
     MemoryRegion *pci_address_space;
     MemoryRegion *system_memory;
