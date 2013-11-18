@@ -226,6 +226,14 @@ static void ich9_pm_get_gpe0_blk(Object *obj, Visitor *v,
     visit_type_uint32(v, &value, name, errp);
 }
 
+static void ich9_pm_get_mem_io_base(Object *obj, Visitor *v, void *opaque,
+                                    const char *name, Error **errp)
+{
+    ICH9LPCState *s = ICH9_LPC_DEVICE(obj);
+
+    visit_type_uint16(v, &s->pm.gpe_mem.port, name, errp);
+}
+
 void ich9_pm_add_properties(Object *obj, ICH9LPCPMRegs *pm, Error **errp)
 {
     static const uint32_t gpe0_len = ICH9_PMIO_GPE0_LEN;
@@ -237,6 +245,9 @@ void ich9_pm_add_properties(Object *obj, ICH9LPCPMRegs *pm, Error **errp)
                         NULL, NULL, pm, NULL);
     object_property_add_uint32_ptr(obj, ACPI_PM_PROP_GPE0_BLK_LEN,
                                    &gpe0_len, errp);
+    pm->gpe_mem.port = ACPI_MEMORY_HOTPLUG_BASE;
+    object_property_add(obj, ACPI_MEMORY_HOTPLUG_IO_BASE_PROP, "int",
+                        ich9_pm_get_mem_io_base, NULL, NULL, NULL, NULL);
 }
 
 int ich9_mem_hotplug(DeviceState *hotplug_dev, DeviceState *dev,
