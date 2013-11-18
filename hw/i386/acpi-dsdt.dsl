@@ -299,6 +299,7 @@ DefinitionBlock (
 /****************************************************************
  * General purpose events
  ****************************************************************/
+    External(\_SB.MHPD.MESC, MethodObj)
 
     Scope(\_GPE) {
         Name(_HID, "ACPI0006")
@@ -313,7 +314,9 @@ DefinitionBlock (
             // CPU hotplug event
             \_SB.PRSC()
         }
-        Method(_L03) {
+        Method(_E03) {
+            // Memory hotplug event
+            \_SB.MHPD.MESC()
         }
         Method(_L04) {
         }
