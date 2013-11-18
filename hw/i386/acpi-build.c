@@ -672,11 +672,15 @@ static void patch_pcihp(int slot, uint8_t *ssdt_ptr)
 static void *acpi_set_bsel(PCIBus *bus, void *opaque)
 {
     unsigned *bsel_alloc = opaque;
-    unsigned *bus_bsel = g_malloc(sizeof *bus_bsel);
+    unsigned *bus_bsel;
 
-    *bus_bsel = (*bsel_alloc)++;
-    object_property_add_uint32_ptr(OBJECT(bus), ACPI_PCIHP_PROP_BSEL,
-                                   bus_bsel, NULL);
+    if (bus->qbus.allow_hotplug) {
+        bus_bsel = g_malloc(sizeof *bus_bsel);
+
+        *bus_bsel = (*bsel_alloc)++;
+        object_property_add_uint32_ptr(OBJECT(bus), ACPI_PCIHP_PROP_BSEL,
+                                       bus_bsel, NULL);
+    }
 
     return bsel_alloc;
 }
@@ -687,9 +691,7 @@ static void acpi_set_pci_info(void)
     unsigned bsel_alloc = 0;
 
     if (bus) {
-        /* Scan all PCI buses. Generate tables to support
-         * PCI hotplug. Set property to enable acpi based hotplug.
-         */
+        /* Scan all PCI buses. Set property to enable acpi based hotplug. */
         pci_for_each_bus_depth_first(bus, acpi_set_bsel, NULL, &bsel_alloc);
     }
 }
@@ -966,9 +968,7 @@ build_ssdt(GArray *table_data, GArray *linker,
             build_pci_bus_state_init(&hotplug_state, NULL);
 
             if (bus) {
-                /* Scan all PCI buses. Generate tables to support
-                 * PCI hotplug. Set property to enable acpi based hotplug.
-                */
+                /* Scan all PCI buses. Generate tables to support hotplug. */
                 pci_for_each_bus_depth_first(bus, build_pci_bus_begin,
                                              build_pci_bus_end, &hotplug_state);
             }
