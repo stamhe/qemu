@@ -18,6 +18,7 @@
  * Contributions after 2012-01-13 are licensed under the terms of the
  * GNU GPL, version 2 or (at your option) any later version.
  */
+#include "qapi/visitor.h"
 #include "hw/hw.h"
 #include "hw/i386/pc.h"
 #include "hw/isa/apm.h"
@@ -757,6 +758,14 @@ int piix4_mem_hotplug(DeviceState *hotplug_dev, DeviceState *dev,
 static int piix4_device_hotplug(DeviceState *qdev, DeviceState *dev,
                                 HotplugState state);
 
+static void piix4_get_mem_io_base(Object *obj, Visitor *v, void *opaque,
+                                  const char *name, Error **errp)
+{
+    PIIX4PMState *s = PIIX4_PM(obj);
+
+    visit_type_uint16(v, &s->gpe_mem.port, name, errp);
+}
+
 static void piix4_acpi_system_hot_add_init(MemoryRegion *parent,
                                            PCIBus *bus, PIIX4PMState *s)
 {
@@ -789,8 +798,11 @@ static void piix4_acpi_system_hot_add_init(MemoryRegion *parent,
     s->cpu_added_notifier.notify = piix4_cpu_added_req;
     qemu_register_cpu_added_notifier(&s->cpu_added_notifier);
 
+    s->gpe_mem.port = ACPI_MEMORY_HOTPLUG_BASE;
+    object_property_add(OBJECT(s), ACPI_MEMORY_HOTPLUG_IO_BASE_PROP, "int",
+                        piix4_get_mem_io_base, NULL, NULL, NULL, NULL);
     acpi_memory_hotplug_init(OBJECT(s), &s->io_mem, &s->gpe_mem);
-    memory_region_add_subregion(parent, ACPI_MEMORY_HOTPLUG_BASE, &s->io_mem);
+    memory_region_add_subregion(parent, s->gpe_mem.port, &s->io_mem);
 }
 
 static void enable_device(PIIX4PMState *s, int slot)
