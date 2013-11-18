@@ -170,6 +170,7 @@ void acpi_update_sci(ACPIREGS *acpi_regs, qemu_irq irq, uint32_t gpe0_sts_mask);
 
 #define ACPI_MEMORY_HOTPLUG_IO_LEN 24
 #define ACPI_MEMORY_HOTPLUG_BASE 0x0a00
+#define ACPI_MEMORY_HOTPLUG_IO_BASE_PROP "memory-hotplug-io-base"
 
 #define ACPI_MEMORY_HOTPLUG_STATUS 8
 
@@ -182,6 +183,7 @@ typedef struct MemStatus {
 } MemStatus;
 
 typedef struct MemHotplugState {
+    uint16_t port;
     uint32_t selector;
     uint32_t dev_count;
     MemStatus *devs;
