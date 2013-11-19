@@ -168,6 +168,30 @@ uint32_t acpi_gpe_ioport_readb(ACPIREGS *ar, uint32_t addr);
 
 void acpi_update_sci(ACPIREGS *acpi_regs, qemu_irq irq, uint32_t gpe0_sts_mask);
 
+#define ACPI_MEMORY_HOTPLUG_IO_LEN 24
+#define ACPI_MEMORY_HOTPLUG_BASE 0x0a00
+
+#define ACPI_MEMORY_HOTPLUG_STATUS 8
+
+typedef struct MemStatus {
+    DeviceState *dimm;
+    bool is_enabled;
+    bool is_inserting;
+    uint32_t ost_event;
+    uint32_t ost_status;
+} MemStatus;
+
+typedef struct MemHotplugState {
+    uint32_t selector;
+    uint32_t dev_count;
+    MemStatus *devs;
+} MemHotplugState;
+
+void acpi_memory_hotplug_init(Object *owner, MemoryRegion *io,
+                              MemHotplugState *state);
+
+int acpi_memory_hotplug_cb(ACPIREGS *regs, MemHotplugState *mem_st,
+                           DeviceState *dev, HotplugState state);
 /* acpi.c */
 extern int acpi_enabled;
 extern char unsigned *acpi_tables;
