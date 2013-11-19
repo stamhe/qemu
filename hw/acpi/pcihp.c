@@ -133,7 +133,6 @@ static void acpi_pcihp_eject_slot(AcpiPciHpState *s, unsigned bsel, unsigned slo
             if (acpi_pcihp_pc_no_hotplug(s, dev)) {
                 slot_free = false;
             } else {
-                qdev_free(qdev);
             }
         }
     }
