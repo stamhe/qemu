@@ -285,6 +285,12 @@ static bool vmstate_test_no_use_acpi_pci_hotplug(void *opaque, int version_id)
     return !s->use_acpi_pci_hotplug;
 }
 
+static bool vmstate_test_use_memhp(void *opaque, int version_id)
+{
+    PIIX4PMState *s = opaque;
+    return s->gpe_mem.dev_count != 0;
+}
+
 /* qemu-kvm 1.2 uses version 3 but advertised as 2
  * To support incoming qemu-kvm 1.2 migration, change version_id
  * and minimum_version_id to 2 below (which breaks migration from
@@ -313,6 +319,7 @@ static const VMStateDescription vmstate_acpi = {
                             struct pci_status),
         VMSTATE_PCI_HOTPLUG(acpi_pci_hotplug, PIIX4PMState,
                             vmstate_test_use_acpi_pci_hotplug),
+        VMSTATE_MEMORY_HOTPLUG(gpe_mem, PIIX4PMState, vmstate_test_use_memhp),
         VMSTATE_END_OF_LIST()
     }
 };
