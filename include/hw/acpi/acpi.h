@@ -194,6 +194,14 @@ void acpi_memory_hotplug_init(Object *owner, MemoryRegion *io,
 
 int acpi_memory_hotplug_cb(ACPIREGS *regs, MemHotplugState *mem_st,
                            DeviceState *dev, HotplugState state);
+
+extern const VMStateDescription vmstate_memory_hotplug;
+
+#define VMSTATE_MEMORY_HOTPLUG(memhp, state, test_memhp_fn) \
+        VMSTATE_STRUCT_TEST(memhp, state, test_memhp_fn, 1, \
+                            vmstate_memory_hotplug, MemHotplugState)
+
+
 /* acpi.c */
 extern int acpi_enabled;
 extern char unsigned *acpi_tables;

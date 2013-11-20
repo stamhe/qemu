@@ -830,3 +830,30 @@ int acpi_memory_hotplug_cb(ACPIREGS *regs, MemHotplugState *mem_st,
     regs->gpe.sts[0] |= ACPI_MEMORY_HOTPLUG_STATUS;
     return 0;
 }
+
+static const VMStateDescription vmstate_memhp_sts = {
+    .name = "memory hotplug device state",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .minimum_version_id_old = 1,
+    .fields      = (VMStateField[]) {
+        VMSTATE_BOOL(is_enabled, MemStatus),
+        VMSTATE_BOOL(is_inserting, MemStatus),
+        VMSTATE_UINT32(ost_event, MemStatus),
+        VMSTATE_UINT32(ost_status, MemStatus),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
+const VMStateDescription vmstate_memory_hotplug = {
+    .name = "memory hotplug state",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .minimum_version_id_old = 1,
+    .fields      = (VMStateField[]) {
+        VMSTATE_UINT32(selector, MemHotplugState),
+        VMSTATE_STRUCT_VARRAY_POINTER_UINT32(devs, MemHotplugState, dev_count,
+                                             vmstate_memhp_sts, MemStatus),
+        VMSTATE_END_OF_LIST()
+    }
+};
