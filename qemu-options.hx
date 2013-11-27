@@ -210,10 +210,13 @@ use is discouraged as it may be removed from future versions.
 ETEXI
 
 DEF("m", HAS_ARG, QEMU_OPTION_m,
-    "-m [mem=]megs\n"
+    "-m [mem=]megs[,slots=n,maxmem=size]\n"
     "                configure guest RAM\n"
     "                mem: initial amount of guest memory (default: "
-    stringify(DEFAULT_RAM_SIZE) "Mb)\n",
+    stringify(DEFAULT_RAM_SIZE) "Mb)\n"
+    "                slots=number of hotplug slots (default: none)\n"
+    "                maxmem=maximum amount of guest memory (default: none)\n"
+    "                slots and maxmem must be used together\n",
     QEMU_ARCH_ALL)
 STEXI
 @item -m @var{megs}
