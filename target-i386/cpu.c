@@ -1110,10 +1110,12 @@ static void x86_cpuid_version_set_family(Object *obj, Visitor *v, void *opaque,
     CPUX86State *env = &cpu->env;
     const int64_t min = 0;
     const int64_t max = 0xff + 0xf;
+    Error *err = NULL;
     int64_t value;
 
-    visit_type_int(v, &value, name, errp);
-    if (error_is_set(errp)) {
+    visit_type_int(v, &value, name, &err);
+    if (err) {
+        error_propagate(errp, err);
         return;
     }
     if (value < min || value > max) {
@@ -1155,10 +1157,12 @@ static void x86_cpuid_version_set_model(Object *obj, Visitor *v, void *opaque,
     CPUX86State *env = &cpu->env;
     const int64_t min = 0;
     const int64_t max = 0xff;
+    Error *err = NULL;
     int64_t value;
 
-    visit_type_int(v, &value, name, errp);
-    if (error_is_set(errp)) {
+    visit_type_int(v, &value, name, &err);
+    if (err) {
+        error_propagate(errp, err);
         return;
     }
     if (value < min || value > max) {
@@ -1197,10 +1201,12 @@ static void x86_cpuid_version_set_stepping(Object *obj, Visitor *v,
     CPUX86State *env = &cpu->env;
     const int64_t min = 0;
     const int64_t max = 0xf;
+    Error *err = NULL;
     int64_t value;
 
-    visit_type_int(v, &value, name, errp);
-    if (error_is_set(errp)) {
+    visit_type_int(v, &value, name, &err);
+    if (err) {
+        error_propagate(errp, err);
         return;
     }
     if (value < min || value > max) {
@@ -1337,10 +1343,12 @@ static void x86_cpuid_set_tsc_freq(Object *obj, Visitor *v, void *opaque,
     X86CPU *cpu = X86_CPU(obj);
     const int64_t min = 0;
     const int64_t max = INT64_MAX;
+    Error *err = NULL;
     int64_t value;
 
-    visit_type_int(v, &value, name, errp);
-    if (error_is_set(errp)) {
+    visit_type_int(v, &value, name, &err);
+    if (err) {
+        error_propagate(errp, err);
         return;
     }
     if (value < min || value > max) {
