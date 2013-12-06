@@ -30,6 +30,8 @@
 #include "hw/nvram/fw_cfg.h"
 #include "exec/address-spaces.h"
 #include "hw/acpi/piix4.h"
+#include "qapi/qmp/qerror.h"
+#include "hw/hotplug.h"
 
 //#define DEBUG
 
@@ -107,7 +109,7 @@ typedef struct PIIX4PMState {
     OBJECT_CHECK(PIIX4PMState, (obj), TYPE_PIIX4_PM)
 
 static void piix4_acpi_system_hot_add_init(MemoryRegion *parent,
-                                           PCIBus *bus, PIIX4PMState *s);
+                                           BusState *bus, PIIX4PMState *s);
 
 #define ACPI_ENABLE 0xf1
 #define ACPI_DISABLE 0xf0
@@ -478,7 +480,7 @@ static int piix4_pm_initfn(PCIDevice *dev)
     qemu_add_machine_init_done_notifier(&s->machine_ready);
     qemu_register_reset(piix4_reset, s);
 
-    piix4_acpi_system_hot_add_init(pci_address_space_io(dev), dev->bus, s);
+    piix4_acpi_system_hot_add_init(pci_address_space_io(dev), BUS(dev->bus), s);
 
     piix4_pm_add_propeties(s);
     return 0;
@@ -664,13 +666,11 @@ static void piix4_cpu_added_req(Notifier *n, void *opaque)
     piix4_cpu_hotplug_req(s, CPU(opaque), PLUG);
 }
 
-static int piix4_device_hotplug(DeviceState *qdev, PCIDevice *dev,
-                                PCIHotplugState state);
-
 static void piix4_acpi_system_hot_add_init(MemoryRegion *parent,
-                                           PCIBus *bus, PIIX4PMState *s)
+                                           BusState *bus, PIIX4PMState *s)
 {
     CPUState *cpu;
+    Error *local_error = NULL;
 
     memory_region_init_io(&s->io_gpe, OBJECT(s), &piix4_gpe_ops, s,
                           "acpi-gpe0", GPE_LEN);
@@ -680,7 +680,14 @@ static void piix4_acpi_system_hot_add_init(MemoryRegion *parent,
                           "acpi-pci-hotplug", PCI_HOTPLUG_SIZE);
     memory_region_add_subregion(parent, PCI_HOTPLUG_ADDR,
                                 &s->io_pci);
-    pci_bus_hotplug(bus, piix4_device_hotplug, DEVICE(s));
+    object_property_set_link(OBJECT(bus), OBJECT(s),
+                             QDEV_HOTPLUG_HANDLER_PROPERTY, &local_error);
+    if (error_is_set(&local_error)) {
+        qerror_report_err(local_error);
+        error_free(local_error);
+        abort();
+    }
+    bus->allow_hotplug = 1;
 
     CPU_FOREACH(cpu) {
         CPUClass *cc = CPU_GET_CLASS(cpu);
@@ -696,41 +703,36 @@ static void piix4_acpi_system_hot_add_init(MemoryRegion *parent,
     qemu_register_cpu_added_notifier(&s->cpu_added_notifier);
 }
 
-static void enable_device(PIIX4PMState *s, int slot)
+static void piix4_pci_device_hotplug_cb(HotplugHandler *hotplug_dev,
+                                        DeviceState *dev, Error **errp)
 {
-    s->ar.gpe.sts[0] |= PIIX4_PCI_HOTPLUG_STATUS;
-    s->pci0_slot_device_present |= (1U << slot);
-}
-
-static void disable_device(PIIX4PMState *s, int slot)
-{
-    s->ar.gpe.sts[0] |= PIIX4_PCI_HOTPLUG_STATUS;
-    s->pci0_status.down |= (1U << slot);
-}
-
-static int piix4_device_hotplug(DeviceState *qdev, PCIDevice *dev,
-				PCIHotplugState state)
-{
-    int slot = PCI_SLOT(dev->devfn);
-    PIIX4PMState *s = PIIX4_PM(qdev);
+    PCIDevice *pci_dev = PCI_DEVICE(dev);
+    int slot = PCI_SLOT(pci_dev->devfn);
+    PIIX4PMState *s = PIIX4_PM(hotplug_dev);
 
     /* Don't send event when device is enabled during qemu machine creation:
      * it is present on boot, no hotplug event is necessary. We do send an
      * event when the device is disabled later. */
-    if (state == PCI_COLDPLUG_ENABLED) {
+    if (!dev->hotplugged) {
         s->pci0_slot_device_present |= (1U << slot);
-        return 0;
+        return;
     }
 
-    if (state == PCI_HOTPLUG_ENABLED) {
-        enable_device(s, slot);
-    } else {
-        disable_device(s, slot);
-    }
-
+    s->ar.gpe.sts[0] |= PIIX4_PCI_HOTPLUG_STATUS;
+    s->pci0_slot_device_present |= (1U << slot);
     pm_update_sci(s);
+}
 
-    return 0;
+static void piix4_pci_device_hot_unplug_cb(HotplugHandler *hotplug_dev,
+                                           DeviceState *dev, Error **errp)
+{
+    PCIDevice *pci_dev = PCI_DEVICE(dev);
+    int slot = PCI_SLOT(pci_dev->devfn);
+    PIIX4PMState *s = PIIX4_PM(hotplug_dev);
+
+    s->ar.gpe.sts[0] |= PIIX4_PCI_HOTPLUG_STATUS;
+    s->pci0_status.down |= (1U << slot);
+    pm_update_sci(s);
 }
 
 static Property piix4_pm_properties[] = {
@@ -745,6 +747,7 @@ static void piix4_pm_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
     PCIDeviceClass *k = PCI_DEVICE_CLASS(klass);
+    HotplugHandlerClass *hc = HOTPLUG_HANDLER_CLASS(klass);
 
     k->init = piix4_pm_initfn;
     k->config_write = pm_write_config;
@@ -757,6 +760,8 @@ static void piix4_pm_class_init(ObjectClass *klass, void *data)
     dc->vmsd = &vmstate_acpi;
     dc->props = piix4_pm_properties;
     dc->hotpluggable = false;
+    hc->plug = piix4_pci_device_hotplug_cb;
+    hc->unplug = piix4_pci_device_hot_unplug_cb;
 }
 
 static const TypeInfo piix4_pm_info = {
@@ -764,6 +769,10 @@ static const TypeInfo piix4_pm_info = {
     .parent        = TYPE_PCI_DEVICE,
     .instance_size = sizeof(PIIX4PMState),
     .class_init    = piix4_pm_class_init,
+    .interfaces = (InterfaceInfo[]) {
+        { TYPE_HOTPLUG_HANDLER },
+        { }
+    }
 };
 
 static void piix4_pm_register_types(void)
