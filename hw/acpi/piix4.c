@@ -523,46 +523,6 @@ i2c_bus *piix4_pm_init(PCIBus *bus, int devfn, uint32_t smb_io_base,
     return s->smb.smbus;
 }
 
-static Property piix4_pm_properties[] = {
-    DEFINE_PROP_UINT32("smb_io_base", PIIX4PMState, smb_io_base, 0),
-    DEFINE_PROP_UINT8(ACPI_PM_PROP_S3_DISABLED, PIIX4PMState, disable_s3, 0),
-    DEFINE_PROP_UINT8(ACPI_PM_PROP_S4_DISABLED, PIIX4PMState, disable_s4, 0),
-    DEFINE_PROP_UINT8(ACPI_PM_PROP_S4_VAL, PIIX4PMState, s4_val, 2),
-    DEFINE_PROP_END_OF_LIST(),
-};
-
-static void piix4_pm_class_init(ObjectClass *klass, void *data)
-{
-    DeviceClass *dc = DEVICE_CLASS(klass);
-    PCIDeviceClass *k = PCI_DEVICE_CLASS(klass);
-
-    k->no_hotplug = 1;
-    k->init = piix4_pm_initfn;
-    k->config_write = pm_write_config;
-    k->vendor_id = PCI_VENDOR_ID_INTEL;
-    k->device_id = PCI_DEVICE_ID_INTEL_82371AB_3;
-    k->revision = 0x03;
-    k->class_id = PCI_CLASS_BRIDGE_OTHER;
-    dc->desc = "PM";
-    dc->no_user = 1;
-    dc->vmsd = &vmstate_acpi;
-    dc->props = piix4_pm_properties;
-}
-
-static const TypeInfo piix4_pm_info = {
-    .name          = TYPE_PIIX4_PM,
-    .parent        = TYPE_PCI_DEVICE,
-    .instance_size = sizeof(PIIX4PMState),
-    .class_init    = piix4_pm_class_init,
-};
-
-static void piix4_pm_register_types(void)
-{
-    type_register_static(&piix4_pm_info);
-}
-
-type_init(piix4_pm_register_types)
-
 static uint64_t gpe_readb(void *opaque, hwaddr addr, unsigned width)
 {
     PIIX4PMState *s = opaque;
@@ -772,3 +732,43 @@ static int piix4_device_hotplug(DeviceState *qdev, PCIDevice *dev,
 
     return 0;
 }
+
+static Property piix4_pm_properties[] = {
+    DEFINE_PROP_UINT32("smb_io_base", PIIX4PMState, smb_io_base, 0),
+    DEFINE_PROP_UINT8(ACPI_PM_PROP_S3_DISABLED, PIIX4PMState, disable_s3, 0),
+    DEFINE_PROP_UINT8(ACPI_PM_PROP_S4_DISABLED, PIIX4PMState, disable_s4, 0),
+    DEFINE_PROP_UINT8(ACPI_PM_PROP_S4_VAL, PIIX4PMState, s4_val, 2),
+    DEFINE_PROP_END_OF_LIST(),
+};
+
+static void piix4_pm_class_init(ObjectClass *klass, void *data)
+{
+    DeviceClass *dc = DEVICE_CLASS(klass);
+    PCIDeviceClass *k = PCI_DEVICE_CLASS(klass);
+
+    k->no_hotplug = 1;
+    k->init = piix4_pm_initfn;
+    k->config_write = pm_write_config;
+    k->vendor_id = PCI_VENDOR_ID_INTEL;
+    k->device_id = PCI_DEVICE_ID_INTEL_82371AB_3;
+    k->revision = 0x03;
+    k->class_id = PCI_CLASS_BRIDGE_OTHER;
+    dc->desc = "PM";
+    dc->no_user = 1;
+    dc->vmsd = &vmstate_acpi;
+    dc->props = piix4_pm_properties;
+}
+
+static const TypeInfo piix4_pm_info = {
+    .name          = TYPE_PIIX4_PM,
+    .parent        = TYPE_PCI_DEVICE,
+    .instance_size = sizeof(PIIX4PMState),
+    .class_init    = piix4_pm_class_init,
+};
+
+static void piix4_pm_register_types(void)
+{
+    type_register_static(&piix4_pm_info);
+}
+
+type_init(piix4_pm_register_types)
