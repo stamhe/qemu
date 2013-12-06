@@ -32,6 +32,7 @@
 #include "qapi/visitor.h"
 #include "qapi/qmp/qjson.h"
 #include "monitor/monitor.h"
+#include "hw/hotplug.h"
 
 int qdev_hotplug = 0;
 static bool qdev_hot_added = false;
@@ -868,6 +869,9 @@ static void qbus_initfn(Object *obj)
     BusState *bus = BUS(obj);
 
     QTAILQ_INIT(&bus->children);
+    object_property_add_link(obj, QDEV_HOTPLUG_DEVICE_PROPERTY,
+                             TYPE_HOTPLUG_DEVICE,
+                             (Object **)&bus->hotplug_device, NULL);
 }
 
 static char *default_bus_get_fw_dev_path(DeviceState *dev)

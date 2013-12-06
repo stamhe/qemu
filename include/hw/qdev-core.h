@@ -169,14 +169,18 @@ typedef struct BusChild {
     QTAILQ_ENTRY(BusChild) sibling;
 } BusChild;
 
+#define QDEV_HOTPLUG_DEVICE_PROPERTY "hotplug-device"
+
 /**
  * BusState:
+ * @hotplug_device: link to a hotplug device associated with bus.
  */
 struct BusState {
     Object obj;
     DeviceState *parent;
     const char *name;
     int allow_hotplug;
+    DeviceState *hotplug_device;
     int max_index;
     QTAILQ_HEAD(ChildrenHead, BusChild) children;
     QLIST_ENTRY(BusState) sibling;
