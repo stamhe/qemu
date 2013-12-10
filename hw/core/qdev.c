@@ -215,6 +215,12 @@ void qdev_unplug(DeviceState *dev, Error **errp)
     }
     assert(dc->unplug != NULL);
 
+    if (!dc->hotplugable) {
+        error_set(errp, QERR_DEVICE_NO_HOTPLUG,
+                  object_get_typename(OBJECT(dev)));
+        return;
+    }
+
     qdev_hot_removed = true;
 
     if (dc->unplug(dev) < 0) {
@@ -678,6 +684,11 @@ static void device_set_realized(Object *obj, bool value, Error **err)
     DeviceState *dev = DEVICE(obj);
     DeviceClass *dc = DEVICE_GET_CLASS(dev);
     Error *local_err = NULL;
+
+    if (dev->hotplugged && !dc->hotplugable) {
+        error_set(err, QERR_DEVICE_NO_HOTPLUG, object_get_typename(obj));
+        return;
+    }
 
     if (value && !dev->realized) {
         if (!obj->parent && local_err == NULL) {
