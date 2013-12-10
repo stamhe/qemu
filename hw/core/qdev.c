@@ -719,6 +719,12 @@ static void device_set_realized(Object *obj, bool value, Error **err)
     dev->realized = value;
 }
 
+static bool device_get_hotplugable(Object *obj, Error **err)
+{
+    DeviceClass *dc = DEVICE_GET_CLASS(obj);
+    return dc->hotplugable;
+}
+
 static void device_initfn(Object *obj)
 {
     DeviceState *dev = DEVICE(obj);
@@ -736,6 +742,8 @@ static void device_initfn(Object *obj)
 
     object_property_add_bool(obj, "realized",
                              device_get_realized, device_set_realized, NULL);
+    object_property_add_bool(obj, "hotplugable",
+                             device_get_hotplugable, NULL, NULL);
 
     class = object_get_class(OBJECT(dev));
     do {

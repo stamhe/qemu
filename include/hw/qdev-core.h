@@ -50,6 +50,8 @@ struct VMStateDescription;
  * is changed to %true. Deprecated, new types inheriting directly from
  * TYPE_DEVICE should use @realize instead, new leaf types should consult
  * their respective parent type.
+ * @hotplugable: booleean indicating if #DeviceClass is hotplugable, available
+ * as readonly "hotplugable" property of #DeviceState instance
  *
  * # Realization #
  * Devices are constructed in two stages,
@@ -99,6 +101,7 @@ typedef struct DeviceClass {
     const char *desc;
     Property *props;
     int no_user;
+    bool hotplugable;
 
     /* callbacks */
     void (*reset)(DeviceState *dev);
