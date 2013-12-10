@@ -323,9 +323,9 @@ static void acpi_piix_eject_slot(PIIX4PMState *s, unsigned slots)
     QTAILQ_FOREACH_SAFE(kid, &bus->children, sibling, next) {
         DeviceState *qdev = kid->child;
         PCIDevice *dev = PCI_DEVICE(qdev);
-        PCIDeviceClass *pc = PCI_DEVICE_GET_CLASS(dev);
+        DeviceClass *dc = DEVICE_GET_CLASS(dev);
         if (PCI_SLOT(dev->devfn) == slot) {
-            if (pc->no_hotplug) {
+            if (!dc->hotpluggable) {
                 slot_free = false;
             } else {
                 object_unparent(OBJECT(qdev));
@@ -353,10 +353,10 @@ static void piix4_update_hotplug(PIIX4PMState *s)
     QTAILQ_FOREACH_SAFE(kid, &bus->children, sibling, next) {
         DeviceState *qdev = kid->child;
         PCIDevice *pdev = PCI_DEVICE(qdev);
-        PCIDeviceClass *pc = PCI_DEVICE_GET_CLASS(pdev);
+        DeviceClass *dc = DEVICE_GET_CLASS(qdev);
         int slot = PCI_SLOT(pdev->devfn);
 
-        if (pc->no_hotplug) {
+        if (!dc->hotpluggable) {
             s->pci0_hotplug_enable &= ~(1U << slot);
         }
 
@@ -746,7 +746,6 @@ static void piix4_pm_class_init(ObjectClass *klass, void *data)
     DeviceClass *dc = DEVICE_CLASS(klass);
     PCIDeviceClass *k = PCI_DEVICE_CLASS(klass);
 
-    k->no_hotplug = 1;
     k->init = piix4_pm_initfn;
     k->config_write = pm_write_config;
     k->vendor_id = PCI_VENDOR_ID_INTEL;
@@ -757,6 +756,7 @@ static void piix4_pm_class_init(ObjectClass *klass, void *data)
     dc->no_user = 1;
     dc->vmsd = &vmstate_acpi;
     dc->props = piix4_pm_properties;
+    dc->hotpluggable = false;
 }
 
 static const TypeInfo piix4_pm_info = {

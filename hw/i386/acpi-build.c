@@ -186,16 +186,16 @@ static void acpi_get_hotplug_info(AcpiMiscInfo *misc)
            DIV_ROUND_UP(PCI_SLOT_MAX, BITS_PER_BYTE));
 
     for (i = 0; i < ARRAY_SIZE(bus->devices); ++i) {
-        PCIDeviceClass *pc;
+        DeviceClass *dc;
         PCIDevice *pdev = bus->devices[i];
 
         if (!pdev) {
             continue;
         }
 
-        pc = PCI_DEVICE_GET_CLASS(pdev);
+        dc = DEVICE_GET_CLASS(pdev);
 
-        if (pc->no_hotplug) {
+        if (!dc->hotpluggable) {
             int slot = PCI_SLOT(i);
 
             clear_bit(slot, misc->slot_hotplug_enable);

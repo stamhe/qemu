@@ -654,7 +654,7 @@ static void piix3_class_init(ObjectClass *klass, void *data)
     dc->desc        = "ISA bridge";
     dc->vmsd        = &vmstate_piix3;
     dc->no_user     = 1,
-    k->no_hotplug   = 1;
+    dc->hotpluggable   = false;
     k->init         = piix3_initfn;
     k->config_write = piix3_write_config;
     k->vendor_id    = PCI_VENDOR_ID_INTEL;
@@ -678,7 +678,7 @@ static void piix3_xen_class_init(ObjectClass *klass, void *data)
     dc->desc        = "ISA bridge";
     dc->vmsd        = &vmstate_piix3;
     dc->no_user     = 1;
-    k->no_hotplug   = 1;
+    dc->hotpluggable   = false;
     k->init         = piix3_initfn;
     k->config_write = piix3_write_config_xen;
     k->vendor_id    = PCI_VENDOR_ID_INTEL;
@@ -699,7 +699,6 @@ static void i440fx_class_init(ObjectClass *klass, void *data)
     DeviceClass *dc = DEVICE_CLASS(klass);
     PCIDeviceClass *k = PCI_DEVICE_CLASS(klass);
 
-    k->no_hotplug = 1;
     k->init = i440fx_initfn;
     k->config_write = i440fx_write_config;
     k->vendor_id = PCI_VENDOR_ID_INTEL;
@@ -709,6 +708,7 @@ static void i440fx_class_init(ObjectClass *klass, void *data)
     dc->desc = "Host bridge";
     dc->no_user = 1;
     dc->vmsd = &vmstate_i440fx;
+    dc->hotpluggable   = false;
 }
 
 static const TypeInfo i440fx_info = {
