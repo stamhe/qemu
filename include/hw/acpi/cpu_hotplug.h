@@ -14,6 +14,7 @@
 
 #include "hw/acpi/acpi.h"
 
+#define ACPI_CPU_HOTPLUG_IO_BASE_PROP "cpu-hotplug-io-base"
 #define ACPI_CPU_HOTPLUG_STATUS 4
 
 #define ACPI_GPE_PROC_LEN 32
