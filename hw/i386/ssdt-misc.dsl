@@ -116,4 +116,69 @@ DefinitionBlock ("ssdt-misc.aml", "SSDT", 0x01, "BXPC", "BXSSDTSUSP", 0x1)
             }
         }
     }
+    Scope(\_SB) {
+        External(NTFY, MethodObj)
+        External(CPON, PkgObj)
+
+        Device(CPHD) {
+            Name(_HID, EISAID("PNP0C08"))
+            Name(CPPL, 32) // cpu-gpe length
+            Name(CPHP, 0xaf00)
+
+            OperationRegion(PRST, SystemIO, CPHP, CPPL)
+            Field(PRST, ByteAcc, NoLock, Preserve) {
+                PRS, 256
+            }
+
+            Method(PRSC, 0) {
+                // Local5 = active cpu bitmap
+                Store(PRS, Local5)
+                // Local2 = last read byte from bitmap
+                Store(Zero, Local2)
+                // Local0 = Processor ID / APIC ID iterator
+                Store(Zero, Local0)
+                While (LLess(Local0, SizeOf(CPON))) {
+                    // Local1 = CPON flag for this cpu
+                    Store(DerefOf(Index(CPON, Local0)), Local1)
+                    If (And(Local0, 0x07)) {
+                        // Shift down previously read bitmap byte
+                        ShiftRight(Local2, 1, Local2)
+                    } Else {
+                        // Read next byte from cpu bitmap
+                        Store(DerefOf(Index(Local5, ShiftRight(Local0, 3))), Local2)
+                    }
+                    // Local3 = active state for this cpu
+                    Store(And(Local2, 1), Local3)
+
+                    If (LNotEqual(Local1, Local3)) {
+                        // State change - update CPON with new state
+                        Store(Local3, Index(CPON, Local0))
+                        // Do CPU notify
+                        If (LEqual(Local3, 1)) {
+                            NTFY(Local0, 1)
+                        } Else {
+                            NTFY(Local0, 3)
+                        }
+                    }
+                    Increment(Local0)
+                }
+            }
+
+            /* Leave bit 0 cleared to avoid Windows BSOD */
+            Name(_STA, 0xA)
+
+            Method(_CRS, 0) {
+                Store(ResourceTemplate() {
+                    IO(Decode16, 0x00, 0x00, 0x01, 0x15, IO)
+                }, Local0)
+
+                CreateWordField(Local0, IO._MIN, IOMN)
+                CreateWordField(Local0, IO._MAX, IOMX)
+
+                Store(CPHP, IOMN)
+                Subtract(Add(CPHP, CPPL), 1, IOMX)
+                Return(Local0)
+            }
+        } // Device(CPHD)
+    } // Scope(\_SB)
 }

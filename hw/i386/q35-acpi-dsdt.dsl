@@ -420,7 +420,7 @@ DefinitionBlock (
         }
         Method(_E02) {
             // CPU hotplug event
-            \_SB.PRSC()
+            \_SB.CPHD.PRSC()
         }
         Method(_L03) {
         }
