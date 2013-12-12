@@ -31,6 +31,7 @@
 #include "exec/address-spaces.h"
 #include "hw/acpi/piix4.h"
 #include "hw/acpi/hotplug.h"
+#include "qapi/visitor.h"
 
 //#define DEBUG
 
@@ -384,6 +385,14 @@ static void piix4_pm_machine_ready(Notifier *n, void *opaque)
         (memory_region_present(io_as, 0x2f8) ? 0x90 : 0);
 }
 
+static void piix4_get_cpu_io_base(Object *obj, Visitor *v, void *opaque,
+                                  const char *name, Error **errp)
+{
+    PIIX4PMState *s = PIIX4_PM(obj);
+
+    visit_type_uint16(v, &s->gpe_cpu.io_base, name, errp);
+}
+
 static void piix4_pm_add_propeties(PIIX4PMState *s)
 {
     static const uint8_t acpi_enable_cmd = ACPI_ENABLE;
@@ -404,6 +413,8 @@ static void piix4_pm_add_propeties(PIIX4PMState *s)
                                   &sci_int, NULL);
     object_property_add_uint32_ptr(OBJECT(s), ACPI_PM_PROP_PM_IO_BASE,
                                   &s->io_base, NULL);
+    object_property_add(OBJECT(s), ACPI_CPU_HOTPLUG_IO_BASE_PROP, "int",
+                        piix4_get_cpu_io_base, NULL, NULL, NULL, NULL);
 }
 
 static int piix4_pm_initfn(PCIDevice *dev)
