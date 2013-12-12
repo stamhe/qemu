@@ -68,6 +68,7 @@ typedef struct AcpiPmInfo {
     uint32_t gpe0_blk;
     uint32_t gpe0_blk_len;
     uint32_t io_base;
+    uint16_t io_cpu_base;
 } AcpiPmInfo;
 
 typedef struct AcpiMiscInfo {
@@ -169,6 +170,9 @@ static void acpi_get_pm_info(AcpiPmInfo *pm)
                                            NULL);
     pm->gpe0_blk_len = object_property_get_int(obj, ACPI_PM_PROP_GPE0_BLK_LEN,
                                                NULL);
+    pm->io_cpu_base = object_property_get_int(obj,
+                                              ACPI_CPU_HOTPLUG_IO_BASE_PROP,
+                                              NULL);
 }
 
 static void acpi_get_hotplug_info(AcpiMiscInfo *misc)
@@ -712,6 +716,8 @@ build_ssdt(GArray *table_data, GArray *linker,
 
     *(uint16_t *)(ssdt_ptr + *ssdt_isa_pest) =
         cpu_to_le16(misc->pvpanic_port);
+    *(uint16_t *)(ssdt_ptr + *ssdt_cpugpe_port) =
+        cpu_to_le16(pm->io_cpu_base);
 
     {
         GArray *sb_scope = build_alloc_array();

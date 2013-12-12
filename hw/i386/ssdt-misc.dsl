@@ -123,6 +123,7 @@ DefinitionBlock ("ssdt-misc.aml", "SSDT", 0x01, "BXPC", "BXSSDTSUSP", 0x1)
         Device(CPHD) {
             Name(_HID, EISAID("PNP0C08"))
             Name(CPPL, 32) // cpu-gpe length
+            ACPI_EXTRACT_NAME_WORD_CONST ssdt_cpugpe_port
             Name(CPHP, 0xaf00)
 
             OperationRegion(PRST, SystemIO, CPHP, CPPL)
