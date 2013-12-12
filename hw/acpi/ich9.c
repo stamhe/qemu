@@ -44,6 +44,8 @@ do { printf("%s "fmt, __func__, ## __VA_ARGS__); } while (0)
 #define ICH9_DEBUG(fmt, ...)    do { } while (0)
 #endif
 
+#define ICH9_PROC_BASE 0xa18
+
 static void ich9_pm_update_sci_fn(ACPIREGS *regs)
 {
     ICH9LPCPMRegs *pm = container_of(regs, ICH9LPCPMRegs, acpi_regs);
@@ -185,6 +187,15 @@ static void pm_powerdown_req(Notifier *n, void *opaque)
     acpi_pm1_evt_power_down(&pm->acpi_regs);
 }
 
+static void ich9_cpu_added_req(Notifier *n, void *opaque)
+{
+    ICH9LPCPMRegs *pm = container_of(n, ICH9LPCPMRegs, cpu_added_notifier);
+
+    assert(pm != NULL);
+    acpi_hotplug_cpu_add(&pm->acpi_regs.gpe, &pm->gpe_cpu, CPU(opaque));
+    acpi_update_sci(&pm->acpi_regs, pm->irq);
+}
+
 void ich9_pm_init(PCIDevice *lpc_pci, ICH9LPCPMRegs *pm,
                   qemu_irq sci_irq)
 {
@@ -210,6 +221,11 @@ void ich9_pm_init(PCIDevice *lpc_pci, ICH9LPCPMRegs *pm,
     qemu_register_reset(pm_reset, pm);
     pm->powerdown_notifier.notify = pm_powerdown_req;
     qemu_register_powerdown_notifier(&pm->powerdown_notifier);
+
+    acpi_hotplug_cpu_init(pci_address_space_io(lpc_pci), OBJECT(lpc_pci),
+                          &pm->gpe_cpu, pm->gpe_cpu.io_base);
+    pm->cpu_added_notifier.notify = ich9_cpu_added_req;
+    qemu_register_cpu_added_notifier(&pm->cpu_added_notifier);
 }
 
 static void ich9_pm_get_gpe0_blk(Object *obj, Visitor *v,
@@ -220,6 +236,14 @@ static void ich9_pm_get_gpe0_blk(Object *obj, Visitor *v,
     uint32_t value = pm->pm_io_base + ICH9_PMIO_GPE0_STS;
 
     visit_type_uint32(v, &value, name, errp);
+}
+
+static void ich9_pm_get_cpu_io_base(Object *obj, Visitor *v, void *opaque,
+                                    const char *name, Error **errp)
+{
+    ICH9LPCState *s = ICH9_LPC_DEVICE(obj);
+
+    visit_type_uint16(v, &s->pm.gpe_cpu.io_base, name, errp);
 }
 
 void ich9_pm_add_properties(Object *obj, ICH9LPCPMRegs *pm, Error **errp)
@@ -233,4 +257,7 @@ void ich9_pm_add_properties(Object *obj, ICH9LPCPMRegs *pm, Error **errp)
                         NULL, NULL, pm, NULL);
     object_property_add_uint32_ptr(obj, ACPI_PM_PROP_GPE0_BLK_LEN,
                                    &gpe0_len, errp);
+    pm->gpe_cpu.io_base = ICH9_PROC_BASE;
+    object_property_add(obj, ACPI_CPU_HOTPLUG_IO_BASE_PROP, "int",
+                        ich9_pm_get_cpu_io_base, NULL, NULL, NULL, NULL);
 }

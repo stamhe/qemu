@@ -22,6 +22,7 @@
 #define HW_ACPI_ICH9_H
 
 #include "hw/acpi/acpi.h"
+#include "hw/acpi/hotplug.h"
 
 typedef struct ICH9LPCPMRegs {
     /*
@@ -42,6 +43,9 @@ typedef struct ICH9LPCPMRegs {
 
     uint32_t pm_io_base;
     Notifier powerdown_notifier;
+
+    AcpiCPUHotplug gpe_cpu;
+    Notifier cpu_added_notifier;
 } ICH9LPCPMRegs;
 
 void ich9_pm_init(PCIDevice *lpc_pci, ICH9LPCPMRegs *pm,
