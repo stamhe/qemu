@@ -69,6 +69,7 @@ typedef struct AcpiPmInfo {
     uint32_t gpe0_blk;
     uint32_t gpe0_blk_len;
     uint32_t io_base;
+    uint16_t io_cpu_base;
 } AcpiPmInfo;
 
 typedef struct AcpiMiscInfo {
@@ -176,6 +177,9 @@ static void acpi_get_pm_info(AcpiPmInfo *pm)
                                            NULL);
     pm->gpe0_blk_len = object_property_get_int(obj, ACPI_PM_PROP_GPE0_BLK_LEN,
                                                NULL);
+    pm->io_cpu_base = object_property_get_int(obj,
+                                              ACPI_CPU_HOTPLUG_IO_BASE_PROP,
+                                              NULL);
 }
 
 static void acpi_get_misc_info(AcpiMiscInfo *info)
@@ -928,6 +932,11 @@ build_ssdt(GArray *table_data, GArray *linker,
         uint8_t op = 0x10; /* ScopeOp */
 
         build_append_nameseg(sb_scope, "_SB_");
+
+        /* build processor status io region */
+        build_append_byte(sb_scope, 0x08); /* NameOp */
+        build_append_nameseg(sb_scope, "PRIO");
+        build_append_int(sb_scope, cpu_to_le16(pm->io_cpu_base));
 
         /* build Processor object for each processor */
         for (i = 0; i < acpi_cpus; i++) {

@@ -21,6 +21,7 @@ Scope(\_SB) {
     /* Objects filled in by run-time generated SSDT */
     External(NTFY, MethodObj)
     External(CPON, PkgObj)
+    External(PRS, FieldUnitObj)
 
     /* Methods called by run-time generated SSDT Processor objects */
     Method(CPMA, 1, NotSerialized) {
@@ -52,10 +53,6 @@ Scope(\_SB) {
         Sleep(200)
     }
 
-    OperationRegion(PRST, SystemIO, 0xaf00, 32)
-    Field(PRST, ByteAcc, NoLock, Preserve) {
-        PRS, 256
-    }
     Method(PRSC, 0) {
         // Local5 = active cpu bitmap
         Store(PRS, Local5)

@@ -116,4 +116,11 @@ DefinitionBlock ("ssdt-misc.aml", "SSDT", 0x01, "BXPC", "BXSSDTSUSP", 0x1)
             }
         }
     }
+    External(PRIO, IntObj)
+    Scope(\_SB) {
+        OperationRegion(PRST, SystemIO, PRIO, 32)
+        Field(PRST, ByteAcc, NoLock, Preserve) {
+            PRS, 256
+        }
+    }
 }
