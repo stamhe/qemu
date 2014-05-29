@@ -31,9 +31,8 @@
 
 #include "exec/gen-icount.h"
 
-#include "helper.h"
-#define GEN_HELPER 1
-#include "helper.h"
+#include "exec/helper-proto.h"
+#include "exec/helper-gen.h"
 
 static TCGv_i64 cpu_X[32];
 static TCGv_i64 cpu_pc;
@@ -160,15 +159,6 @@ void aarch64_cpu_dump_state(CPUState *cs, FILE *f,
         cpu_fprintf(f, "FPCR: %08x  FPSR: %08x\n",
                     vfp_get_fpcr(env), vfp_get_fpsr(env));
     }
-}
-
-static int get_mem_index(DisasContext *s)
-{
-#ifdef CONFIG_USER_ONLY
-    return 1;
-#else
-    return s->user;
-#endif
 }
 
 void gen_a64_set_pc_im(uint64_t val)
@@ -1516,6 +1506,10 @@ static void disas_uncond_b_reg(DisasContext *s, uint32_t insn)
         tcg_gen_movi_i64(cpu_reg(s, 30), s->pc);
         break;
     case 4: /* ERET */
+        if (s->current_pl == 0) {
+            unallocated_encoding(s);
+            return;
+        }
         gen_helper_exception_return(cpu_env);
         s->is_jmp = DISAS_JUMP;
         return;

@@ -965,7 +965,7 @@ static int parse_sandbox(QemuOpts *opts, void *opaque)
     return 0;
 }
 
-static void parse_name(QemuOpts *opts)
+static int parse_name(QemuOpts *opts, void *opaque)
 {
     const char *proc_name;
 
@@ -978,6 +978,8 @@ static void parse_name(QemuOpts *opts)
     if (proc_name) {
         os_set_proc_name(proc_name);
     }
+
+    return 0;
 }
 
 bool usb_enabled(bool default_usb)
@@ -2889,7 +2891,8 @@ static int object_set_property(const char *name, const char *value, void *opaque
     StringInputVisitor *siv;
     Error *local_err = NULL;
 
-    if (strcmp(name, "qom-type") == 0 || strcmp(name, "id") == 0) {
+    if (strcmp(name, "qom-type") == 0 || strcmp(name, "id") == 0 ||
+        strcmp(name, "type") == 0) {
         return 0;
     }
 
@@ -3796,7 +3799,6 @@ int main(int argc, char **argv, char **envp)
                 if (!opts) {
                     exit(1);
                 }
-                parse_name(opts);
                 break;
             case QEMU_OPTION_prom_env:
                 if (nb_prom_envs >= MAX_PROM_ENVS) {
@@ -3968,6 +3970,10 @@ int main(int argc, char **argv, char **envp)
     }
 
     if (qemu_opts_foreach(qemu_find_opts("sandbox"), parse_sandbox, NULL, 0)) {
+        exit(1);
+    }
+
+    if (qemu_opts_foreach(qemu_find_opts("name"), parse_name, NULL, 1)) {
         exit(1);
     }
 
@@ -4214,6 +4220,13 @@ int main(int argc, char **argv, char **envp)
         exit(0);
     }
 
+    machine_opts = qemu_get_machine_opts();
+    if (qemu_opt_foreach(machine_opts, object_set_property, current_machine,
+                         1) < 0) {
+        object_unref(OBJECT(current_machine));
+        exit(1);
+    }
+
     configure_accelerator(machine_class);
 
     if (qtest_chrdev) {
@@ -4258,6 +4271,7 @@ int main(int argc, char **argv, char **envp)
 
     if (!kernel_cmdline) {
         kernel_cmdline = "";
+        current_machine->kernel_cmdline = (char *)kernel_cmdline;
     }
 
     linux_boot = (kernel_filename != NULL);
@@ -4420,16 +4434,11 @@ int main(int argc, char **argv, char **envp)
 
     qdev_machine_init();
 
-    current_machine->init_args = (QEMUMachineInitArgs) {
-        .machine = machine_class,
-        .ram_size = ram_size,
-        .boot_order = boot_order,
-        .kernel_filename = kernel_filename,
-        .kernel_cmdline = kernel_cmdline,
-        .initrd_filename = initrd_filename,
-        .cpu_model = cpu_model };
+    current_machine->ram_size = ram_size;
+    current_machine->boot_order = boot_order;
+    current_machine->cpu_model = cpu_model;
 
-    machine_class->init(&current_machine->init_args);
+    machine_class->init(current_machine);
 
     audio_init();
 
